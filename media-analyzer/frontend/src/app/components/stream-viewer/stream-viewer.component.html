@@ -1,1 +1,10 @@
-<p>stream-viewer works!</p>
+<div class="stream-viewer">
+  <video #video controls autoplay muted class="video-player">
+    Your browser does not support video playback.
+  </video>
+  
+  <div class="controls">
+    <button (click)="play()" class="btn">Play</button>
+    <button (click)="pause()" class="btn">Pause</button>
+  </div>
+</div>

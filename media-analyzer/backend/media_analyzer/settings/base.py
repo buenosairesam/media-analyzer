@@ -78,10 +78,16 @@ WSGI_APPLICATION = "media_analyzer.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import os
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "media_analyzer"),
+        "USER": os.getenv("DB_USER", "media_user"), 
+        "PASSWORD": os.getenv("DB_PASSWORD", "media_pass"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
@@ -121,6 +127,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Streaming settings
+RTMP_PORT = int(os.getenv('RTMP_PORT', 1935))
+HLS_BASE_URL = os.getenv('HLS_BASE_URL', 'http://localhost:8081')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

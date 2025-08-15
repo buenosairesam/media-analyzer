@@ -1,0 +1,39 @@
+.app {
+  min-height: 100vh;
+  padding: 1rem;
+  
+  header {
+    text-align: center;
+    margin-bottom: 2rem;
+    
+    h1 {
+      color: #333;
+      font-size: 2rem;
+    }
+  }
+  
+  .main-content {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+  }
+  
+  .controls-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+  }
+  
+  .viewer-section {
+    background: #000;
+    padding: 1rem;
+    border-radius: 8px;
+  }
+}

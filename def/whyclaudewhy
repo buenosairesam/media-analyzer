@@ -1,0 +1,5 @@
+media-analyzer/backend/media_analyzer/urls.py
+	why MEDIA_ROOT just in debug
+
+nginx
+	why add cors straigth in nginx conf

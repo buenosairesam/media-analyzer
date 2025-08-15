@@ -1,1 +1,39 @@
-<p>stream-control works!</p>
+<div class="stream-control">
+  <h2>Stream Control</h2>
+  
+  <!-- Create New Stream -->
+  <div class="create-stream">
+    <h3>Create Stream</h3>
+    <input 
+      type="text" 
+      [(ngModel)]="newStreamName" 
+      placeholder="Stream name"
+      class="input">
+    <button (click)="createStream()" class="btn btn-primary">Create Stream</button>
+  </div>
+  
+  <!-- Stream List -->
+  <div class="streams-list">
+    <h3>Streams</h3>
+    <div class="stream-item" *ngFor="let stream of streams">
+      <div class="stream-info">
+        <h4>{{ stream.name }}</h4>
+        <p class="status">Status: <span [class]="'status-' + stream.status">{{ stream.status }}</span></p>
+        <p class="rtmp-url">RTMP URL: <code>{{ stream.rtmp_ingest_url }}</code></p>
+        <p class="stream-key">Stream Key: <code>{{ stream.stream_key }}</code></p>
+      </div>
+      
+      <div class="stream-actions">
+        <button (click)="startStream(stream)" 
+                [disabled]="stream.status === 'active'" 
+                class="btn btn-success">Start</button>
+        <button (click)="stopStream(stream)" 
+                [disabled]="stream.status === 'inactive'" 
+                class="btn btn-danger">Stop</button>
+        <button (click)="selectStream(stream)" 
+                *ngIf="stream.hls_playlist_url"
+                class="btn btn-info">View</button>
+      </div>
+    </div>
+  </div>
+</div>
