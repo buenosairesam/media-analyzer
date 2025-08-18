@@ -1,0 +1,43 @@
+> just keep k8s in mind but I think is better to dedicate a session for k8s. anything I should know now? I understand the concepts well and have some practical 
+  experience (on the job and running a cluster locally) but its been a while
+
+● Good to plan ahead! Here are the key things to keep in mind for the K8s session:
+
+  K8s-Specific Considerations for Your App
+
+  Stateful Components:
+  - PostgreSQL (needs StatefulSet + PVC)
+  - Redis (can be deployment but consider persistence)
+  - Media files storage (shared PVC across workers)
+
+  Service Architecture:
+  - Django ASGI (HTTP + WebSocket)
+  - Celery workers (separate deployment)
+  - Nginx (HLS file serving)
+  - External services (PostgreSQL, Redis)
+
+  Scaling Patterns:
+  - HPA for Celery workers based on queue depth
+  - Video processing is CPU/memory intensive
+  - WebSocket connections need session affinity
+
+  Storage:
+  - Shared volume for HLS segments (/media)
+  - Database persistence
+  - Consider GCP Cloud Storage integration
+
+  Networking:
+  - Ingress for external access
+  - Internal services communication
+  - WebSocket support in ingress
+
+  GCP Integration Points:
+  - GKE cluster
+  - Cloud Storage for media
+  - Cloud SQL (optional PostgreSQL upgrade)
+  - Container Registry for images
+
+  The current Docker Compose setup translates well to K8s, but you'll need persistent volumes and proper service discovery. Your video processing workload is perfect
+  for demonstrating K8s scaling capabilities.
+
+  We can tackle the architecture cleanup first, then dedicate a full session to the K8s deployment!

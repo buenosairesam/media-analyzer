@@ -24,7 +24,7 @@
 │                         │                                  │ [x] Basic error handling         │ [ ] CDN integration ready        │
 ├─────────────────────────┼──────────────────────────────────┼──────────────────────────────────┼──────────────────────────────────┤
 │ 🤖 AI Analysis          │ Backend:                         │ Backend:                         │ Backend:                         │
-│                         │ [x] Django ai_processing app     │ [ ] Frame extraction from HLS     │ [ ] Distributed processing work   │
+│                         │ [x] Django ai_processing app     │ [ ] Frame extraction from HLS    │ [ ] Distributed processing work  │
 │                         │ [ ] Video analysis models        │ [ ] YOLO object detection        │ [ ] WebSocket analysis streaming │
 │                         │ [ ] YOLO/CLIP model loading      │ [ ] Analysis results storage     │ [ ] Redis result caching         │
 │                         │ [x] Processing strategy pattern  │ [ ] Results API endpoint         │ [ ] Batch vs real-time modes     │

@@ -1,0 +1,269 @@
+I think this could be improved there are repeating configuration stuff (if using clip or vision) that shouldn be in the queued messages for analysis
+is a straigh backend thing
+
+
+there are repeating configuration stuff in celery messages, (if using clip or google vision) that shouldn't be in the queued messages for analysis
+is a straigth backend/frontend comunnication thing and messages should be notified when theres a change or just read whatever is configured. maybe that is what it does but the whole logging for the message feels to verbose. also maybe there should be different quees for logo and images properties, I dont know. It feels messy. don't do anything yet tell me what do you think
+
+
+✻ Thinking…
+
+  The user is making very valid points about the current implementation before moving to production. Let me analyze what they're pointing out:
+
+  1. Configuration repetition in Celery messages: Looking at the logs they showed earlier, I can see that every Celery task is:
+    - Loading and checking all providers from the database
+    - Reconfiguring the analysis engine every time
+    - Logging all the provider information repeatedly
+  2. Provider selection logic: The task is checking "if using CLIP or Google Vision" every single time, when this should be a configuration that's set once and cached.
+  3. Verbose logging: Too much debug info in production logs.
+  4. Queue separation: Right now everything goes through one queue, but they could have separate queues for different types of analysis (logo detection, visual 
+  properties, etc.)
+
+  Let me think about what the clean architecture should look like:
+
+  Current problems:
+  - Provider configuration is loaded from DB on every task execution
+  - Engine is reconfigured from scratch every time
+  - Logging is too verbose for production
+  - Single queue for all analysis types
+  - No caching of provider configurations
+
+  Better architecture:
+  - Provider configuration should be loaded once at startup or cached with invalidation
+  - Engine should be configured once per worker, not per task
+  - Separate queues for different analysis types
+  - Cleaner logging levels
+  - Configuration changes should trigger worker restarts or cache invalidation
+
+  This is exactly the kind of architectural cleanup needed before going to production/K8s.
+
+● You're absolutely right! The current implementation has several architectural issues that need fixing before production. Let me break down what I see:
+
+  Current Problems
+
+  1. Configuration Overhead
+  - Every Celery task loads providers from DB
+  - Engine reconfigured from scratch each time
+  - Provider selection logic runs repeatedly
+  - Lots of "Found 2 total providers" spam
+
+  2. Poor Separation of Concerns
+  - Single queue handling all analysis types
+  - Mixed responsibilities (config + processing)
+  - No caching of provider settings
+
+  3. Production-Unfriendly Logging
+  - Too verbose for production
+  - Debug info cluttering worker logs
+  - Configuration details logged every task
+
+  Better Architecture
+
+  Configuration Management:
+  - Load provider config once at worker startup
+  - Cache active providers in Redis/memory
+  - Only reload config when explicitly changed
+  - Clean separation of config vs processing
+
+  Queue Separation:
+  logo_detection_queue     -> only logo analysis
+  visual_analysis_queue    -> brightness, colors, etc
+  object_detection_queue   -> future YOLO objects
+
+  Worker Specialization:
+  - Logo detection workers (CLIP-focused)
+  - Visual analysis workers (OpenCV-focused)
+  - Different scaling profiles per queue type
+
+  Configuration Flow:
+  - Admin changes provider settings → triggers config reload
+  - Workers cache config until reload signal
+  - Clean task payloads with minimal data
+
+  Logging Levels:
+  - DEBUG: detailed analysis info
+  - INFO: task completion only
+  - ERROR: actual failures
+
+  This cleanup is essential before K8s deployment where you'll have multiple worker pods and need clean scaling/monitoring.
+
+  Want me to refactor this architecture now, or should we plan it out more first?
+
+
+
+
+[2025-08-18 16:37:55,910: INFO/MainProcess] mingle: searching for neighbors
+[2025-08-18 16:37:56,915: INFO/MainProcess] mingle: all alone
+[2025-08-18 16:37:56,924: INFO/MainProcess] celery@mcrn2 ready.
+[2025-08-18 16:37:56,927: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[cde6573e-6d03-4904-b042-4e29a86652b7] received
+[2025-08-18 16:37:56,929: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[1e4ed524-cdd7-45c5-b599-0c8ece4c5c14] received
+[2025-08-18 16:37:56,930: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[5fec033e-3c12-4327-b342-3d49a966b516] received
+[2025-08-18 16:37:56,931: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[be45792e-fca0-4c83-8f9d-2baa42bf307b] received
+[2025-08-18 16:37:56,932: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[a38470b0-ca68-4038-84fc-f077ee4cdfd3] received
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-4] Found 2 total providers:
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-2] Found 2 total providers:
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-1] Found 2 total providers:
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-3] Found 2 total providers:
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-16] Found 2 total providers:
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-4]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-2]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-4]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-1]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-3]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-2]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-16]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-1]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-3]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:37:56,945: INFO/ForkPoolWorker-16]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-1] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-4] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-1] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-16] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-4] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-16] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-1] Engine configuration completed
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-2] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-3] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-1] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-8.ts
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-4] Engine configuration completed
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-16] Engine configuration completed
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-3] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-2] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-16] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-7.ts
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-4] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-11.ts
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-3] Engine configuration completed
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-2] Engine configuration completed
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-3] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-10.ts
+[2025-08-18 16:37:56,946: INFO/ForkPoolWorker-2] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-9.ts
+[h264 @ 0x3c4d2d00] [h264 @ 0x3c4d3300] non-existing SPS 0 referenced in buffering period
+non-existing SPS 0 referenced in buffering period
+[h264 @ 0x3c4d2200] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x3c4d2200] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x3c4d2540] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x3c4d3300] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x3c4d2d00] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x3c4d2200] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x3c4d2200] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x3c4d2540] non-existing SPS 0 referenced in buffering period
+[2025-08-18 16:37:57,029: INFO/ForkPoolWorker-3] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:37:57,029: INFO/ForkPoolWorker-1] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:37:57,030: INFO/ForkPoolWorker-3] Starting frame analysis...
+[2025-08-18 16:37:57,030: INFO/ForkPoolWorker-1] Starting frame analysis...
+[2025-08-18 16:37:57,030: INFO/ForkPoolWorker-16] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:37:57,030: INFO/ForkPoolWorker-16] Starting frame analysis...
+[2025-08-18 16:37:57,030: INFO/ForkPoolWorker-2] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:37:57,031: INFO/ForkPoolWorker-2] Starting frame analysis...
+[2025-08-18 16:37:57,031: INFO/ForkPoolWorker-4] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:37:57,031: INFO/ForkPoolWorker-4] Starting frame analysis...
+[2025-08-18 16:38:01,613: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[a35f6a46-37d4-4c21-9031-6d94ba336bd7] received
+[2025-08-18 16:38:01,642: INFO/ForkPoolWorker-5] Found 2 total providers:
+[2025-08-18 16:38:01,645: INFO/ForkPoolWorker-5]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:38:01,645: INFO/ForkPoolWorker-5]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:38:01,648: INFO/ForkPoolWorker-5] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:38:01,648: INFO/ForkPoolWorker-5] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:38:01,648: INFO/ForkPoolWorker-5] Engine configuration completed
+[2025-08-18 16:38:01,649: INFO/ForkPoolWorker-5] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-12.ts
+[h264 @ 0x3c4d2200] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x3c4d2200] non-existing SPS 0 referenced in buffering period
+[2025-08-18 16:38:01,760: INFO/ForkPoolWorker-5] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:38:01,760: INFO/ForkPoolWorker-5] Starting frame analysis...
+[2025-08-18 16:38:02,265: WARNING/ForkPoolWorker-4] Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+[2025-08-18 16:38:02,267: WARNING/ForkPoolWorker-2] Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+[2025-08-18 16:38:02,292: WARNING/ForkPoolWorker-3] Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+[2025-08-18 16:38:02,326: WARNING/ForkPoolWorker-16] Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+[2025-08-18 16:38:02,340: WARNING/ForkPoolWorker-1] Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+[2025-08-18 16:38:06,140: WARNING/ForkPoolWorker-5] Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+[2025-08-18 16:38:09,260: INFO/ForkPoolWorker-4] Analysis results: {'logos': [{'label': 'Google', 'confidence': 0.4090644121170044, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}, {'label': 'Apple', 'confidence': 0.3697817027568817, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[20, 21, 24], [173, 172, 174], [54, 55, 64]], 'brightness_level': 0.1390595900911805, 'contrast_level': 0.12830904267259136, 'saturation_level': 0.13596454021423385}}
+[2025-08-18 16:38:09,279: INFO/ForkPoolWorker-4] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-11.ts: 2 detections
+[2025-08-18 16:38:09,298: INFO/ForkPoolWorker-4] Task ai_processing.tasks.process_video_segment[a38470b0-ca68-4038-84fc-f077ee4cdfd3] succeeded in 12.365913566900417s: {'detections': 2, 'analysis_id': '116a81bc-b689-4f31-8fcd-08ebb3ab63c5'}
+[2025-08-18 16:38:09,661: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[8a93b9fd-33e1-412a-a7e4-7bfa25127f79] received
+[2025-08-18 16:38:09,686: INFO/ForkPoolWorker-4] Found 2 total providers:
+[2025-08-18 16:38:09,687: INFO/ForkPoolWorker-4]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:38:09,687: INFO/ForkPoolWorker-4]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:38:09,688: INFO/ForkPoolWorker-4] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:38:09,688: INFO/ForkPoolWorker-4] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:38:09,688: INFO/ForkPoolWorker-4] Engine configuration completed
+[2025-08-18 16:38:09,688: INFO/ForkPoolWorker-4] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-13.ts
+[h264 @ 0x445059c0] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x445059c0] non-existing SPS 0 referenced in buffering period
+[2025-08-18 16:38:09,753: INFO/ForkPoolWorker-4] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:38:09,753: INFO/ForkPoolWorker-4] Starting frame analysis...
+[2025-08-18 16:38:13,727: INFO/ForkPoolWorker-3] Analysis results: {'logos': [{'label': 'Google', 'confidence': 0.42210501432418823, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}, {'label': 'Apple', 'confidence': 0.3576214611530304, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[20, 21, 24], [172, 172, 174], [54, 55, 64]], 'brightness_level': 0.13935481912672476, 'contrast_level': 0.128542122700099, 'saturation_level': 0.1362288338174776}}
+[2025-08-18 16:38:13,753: INFO/ForkPoolWorker-3] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-10.ts: 2 detections
+[2025-08-18 16:38:13,775: INFO/ForkPoolWorker-3] Task ai_processing.tasks.process_video_segment[be45792e-fca0-4c83-8f9d-2baa42bf307b] succeeded in 16.843556493055075s: {'detections': 2, 'analysis_id': 'd3f2f585-822c-46b7-b2a4-d404be6bfe5c'}
+[2025-08-18 16:38:15,519: INFO/ForkPoolWorker-2] Analysis results: {'logos': [{'label': 'Google', 'confidence': 0.40869590640068054, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}, {'label': 'Apple', 'confidence': 0.36340251564979553, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[20, 21, 24], [174, 173, 175], [54, 55, 64]], 'brightness_level': 0.13968061229121279, 'contrast_level': 0.12943472543277817, 'saturation_level': 0.13624170902929073}}
+[2025-08-18 16:38:15,544: INFO/ForkPoolWorker-2] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-9.ts: 2 detections
+[2025-08-18 16:38:15,569: INFO/ForkPoolWorker-2] Task ai_processing.tasks.process_video_segment[5fec033e-3c12-4327-b342-3d49a966b516] succeeded in 18.638674875022843s: {'detections': 2, 'analysis_id': '84408ae9-b4f4-42f1-bdfa-357aece644d4'}
+[2025-08-18 16:38:16,317: INFO/ForkPoolWorker-1] Analysis results: {'logos': [{'label': 'Apple', 'confidence': 0.39591965079307556, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}, {'label': 'Google', 'confidence': 0.36241379380226135, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[20, 21, 24], [173, 173, 175], [54, 55, 64]], 'brightness_level': 0.1394802358186073, 'contrast_level': 0.12914930695311738, 'saturation_level': 0.13601520893851368}}
+[2025-08-18 16:38:16,333: INFO/ForkPoolWorker-1] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-8.ts: 2 detections
+[2025-08-18 16:38:16,354: INFO/ForkPoolWorker-1] Task ai_processing.tasks.process_video_segment[1e4ed524-cdd7-45c5-b599-0c8ece4c5c14] succeeded in 19.42475356196519s: {'detections': 2, 'analysis_id': '07c4774d-7c73-4081-9de6-ff3c837a5d48'}
+[2025-08-18 16:38:16,575: INFO/ForkPoolWorker-16] Analysis results: {'logos': [{'label': 'Apple', 'confidence': 0.4048289358615875, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}, {'label': 'Google', 'confidence': 0.35931655764579773, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[20, 21, 24], [173, 172, 175], [54, 55, 64]], 'brightness_level': 0.13938966679778908, 'contrast_level': 0.12867553157407957, 'saturation_level': 0.13664221927196804}}
+[2025-08-18 16:38:16,587: INFO/ForkPoolWorker-16] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-7.ts: 2 detections
+[2025-08-18 16:38:16,609: INFO/ForkPoolWorker-16] Task ai_processing.tasks.process_video_segment[cde6573e-6d03-4904-b042-4e29a86652b7] succeeded in 19.680853400961496s: {'detections': 2, 'analysis_id': '15ab48fa-3074-4361-b8d4-f03c612faee4'}
+[2025-08-18 16:38:17,215: INFO/ForkPoolWorker-5] Analysis results: {'logos': [{'label': 'Google', 'confidence': 0.5754773020744324, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[21, 21, 25], [174, 174, 177], [58, 60, 77]], 'brightness_level': 0.13535354446562575, 'contrast_level': 0.1363023302612117, 'saturation_level': 0.16533522830428468}}
+[2025-08-18 16:38:17,228: INFO/ForkPoolWorker-5] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-12.ts: 1 detections
+[2025-08-18 16:38:17,244: INFO/ForkPoolWorker-5] Task ai_processing.tasks.process_video_segment[a35f6a46-37d4-4c21-9031-6d94ba336bd7] succeeded in 15.629837638000026s: {'detections': 1, 'analysis_id': '77f309e6-8af4-4e13-a40e-ca95843a42c0'}
+[2025-08-18 16:38:17,294: INFO/ForkPoolWorker-4] Analysis results: {'logos': [{'label': 'Google', 'confidence': 0.6661646962165833, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[176, 175, 177], [60, 58, 69], [1, 1, 2]], 'brightness_level': 0.0801338684136206, 'contrast_level': 0.18819245811973462, 'saturation_level': 0.23137383313664972}}
+[2025-08-18 16:38:17,305: INFO/ForkPoolWorker-4] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-13.ts: 1 detections
+[2025-08-18 16:38:17,324: INFO/ForkPoolWorker-4] Task ai_processing.tasks.process_video_segment[8a93b9fd-33e1-412a-a7e4-7bfa25127f79] succeeded in 7.6547317589866s: {'detections': 1, 'analysis_id': '024aaab0-61ba-4702-a2ca-c1ec9992fe48'}
+[2025-08-18 16:38:17,611: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[8d243811-b3f3-4588-a035-0f5df6f8d1e5] received
+[2025-08-18 16:38:17,620: INFO/ForkPoolWorker-16] Found 2 total providers:
+[2025-08-18 16:38:17,620: INFO/ForkPoolWorker-16]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:38:17,620: INFO/ForkPoolWorker-16]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:38:17,621: INFO/ForkPoolWorker-16] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:38:17,621: INFO/ForkPoolWorker-16] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:38:17,621: INFO/ForkPoolWorker-16] Engine configuration completed
+[2025-08-18 16:38:17,621: INFO/ForkPoolWorker-16] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-14.ts
+[h264 @ 0x44738e00] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x44738e00] non-existing SPS 0 referenced in buffering period
+[2025-08-18 16:38:17,681: INFO/ForkPoolWorker-16] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:38:17,681: INFO/ForkPoolWorker-16] Starting frame analysis...
+[2025-08-18 16:38:22,265: INFO/ForkPoolWorker-16] Analysis results: {'logos': [{'label': 'Google', 'confidence': 0.3460542857646942, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}, {'label': 'Apple', 'confidence': 0.319761723279953, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[147, 147, 154], [2, 2, 2], [71, 47, 56]], 'brightness_level': 0.08447971952412651, 'contrast_level': 0.16374765632789706, 'saturation_level': 0.13736099574860808}}
+[2025-08-18 16:38:22,275: INFO/ForkPoolWorker-16] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-14.ts: 2 detections
+[2025-08-18 16:38:22,296: INFO/ForkPoolWorker-16] Task ai_processing.tasks.process_video_segment[8d243811-b3f3-4588-a035-0f5df6f8d1e5] succeeded in 4.684708549058996s: {'detections': 2, 'analysis_id': 'ffcd58b6-ec46-42bd-aadf-41caf8a231c4'}
+[2025-08-18 16:38:25,611: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[dbcd3dfc-dbd7-452f-83b8-73e4744220d5] received
+[2025-08-18 16:38:25,621: INFO/ForkPoolWorker-16] Found 2 total providers:
+[2025-08-18 16:38:25,622: INFO/ForkPoolWorker-16]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:38:25,622: INFO/ForkPoolWorker-16]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:38:25,623: INFO/ForkPoolWorker-16] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:38:25,623: INFO/ForkPoolWorker-16] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:38:25,623: INFO/ForkPoolWorker-16] Engine configuration completed
+[2025-08-18 16:38:25,623: INFO/ForkPoolWorker-16] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-15.ts
+[h264 @ 0x45e13c00] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x45e13c00] non-existing SPS 0 referenced in buffering period
+[2025-08-18 16:38:25,669: INFO/ForkPoolWorker-16] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:38:25,669: INFO/ForkPoolWorker-16] Starting frame analysis...
+[2025-08-18 16:38:30,066: INFO/ForkPoolWorker-16] Analysis results: {'logos': [{'label': 'Google', 'confidence': 0.5520480275154114, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}, {'label': 'Apple', 'confidence': 0.3003958761692047, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[179, 178, 181], [73, 77, 104], [23, 23, 27]], 'brightness_level': 0.1378174454581215, 'contrast_level': 0.13558354321945026, 'saturation_level': 0.15619522928770274}}
+[2025-08-18 16:38:30,076: INFO/ForkPoolWorker-16] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-15.ts: 2 detections
+[2025-08-18 16:38:30,097: INFO/ForkPoolWorker-16] Task ai_processing.tasks.process_video_segment[dbcd3dfc-dbd7-452f-83b8-73e4744220d5] succeeded in 4.485186079982668s: {'detections': 2, 'analysis_id': 'cc8250de-518b-45d0-917c-895cb1240545'}
+[2025-08-18 16:38:33,569: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[cf3fe764-c8e1-467b-bfc4-17d11443e7e4] received
+[2025-08-18 16:38:33,578: INFO/ForkPoolWorker-16] Found 2 total providers:
+[2025-08-18 16:38:33,578: INFO/ForkPoolWorker-16]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:38:33,578: INFO/ForkPoolWorker-16]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:38:33,579: INFO/ForkPoolWorker-16] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:38:33,579: INFO/ForkPoolWorker-16] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:38:33,579: INFO/ForkPoolWorker-16] Engine configuration completed
+[2025-08-18 16:38:33,579: INFO/ForkPoolWorker-16] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-16.ts
+[h264 @ 0x44738e00] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x44738e00] non-existing SPS 0 referenced in buffering period
+[2025-08-18 16:38:33,624: INFO/ForkPoolWorker-16] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:38:33,624: INFO/ForkPoolWorker-16] Starting frame analysis...
+[2025-08-18 16:38:38,435: INFO/ForkPoolWorker-16] Analysis results: {'logos': [{'label': 'Google', 'confidence': 0.5440018177032471, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[72, 77, 103], [178, 177, 180], [23, 22, 27]], 'brightness_level': 0.13682642293028321, 'contrast_level': 0.1367056198691002, 'saturation_level': 0.16388074353969984}}
+[2025-08-18 16:38:38,444: INFO/ForkPoolWorker-16] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-16.ts: 1 detections
+[2025-08-18 16:38:38,464: INFO/ForkPoolWorker-16] Task ai_processing.tasks.process_video_segment[cf3fe764-c8e1-467b-bfc4-17d11443e7e4] succeeded in 4.894647152977996s: {'detections': 1, 'analysis_id': '19b631d3-36ab-4799-a5a6-b632590cda54'}
+[2025-08-18 16:38:41,618: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[2ce8e89e-046c-4ded-860f-addaa5bd7fa0] received
+[2025-08-18 16:38:41,629: INFO/ForkPoolWorker-16] Found 2 total providers:
+[2025-08-18 16:38:41,630: INFO/ForkPoolWorker-16]   - Local CLIP: local_clip (active: True)
+[2025-08-18 16:38:41,630: INFO/ForkPoolWorker-16]   - Google Cloud Vision: gcp_vision (active: False)
+[2025-08-18 16:38:41,630: INFO/ForkPoolWorker-16] Found CLIP provider: Local CLIP (active: True)
+[2025-08-18 16:38:41,630: INFO/ForkPoolWorker-16] Configuring engine with config: {'logo_detection': {'provider_type': 'local_clip', 'model_identifier': 'openai/clip-vit-base-patch32'}}
+[2025-08-18 16:38:41,630: INFO/ForkPoolWorker-16] Engine configuration completed
+[2025-08-18 16:38:41,630: INFO/ForkPoolWorker-16] Extracting frame from: /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-17.ts
+[h264 @ 0x45e13c00] non-existing SPS 0 referenced in buffering period
+[h264 @ 0x45e13c00] non-existing SPS 0 referenced in buffering period
+[2025-08-18 16:38:41,676: INFO/ForkPoolWorker-16] Frame extracted successfully, size: (1920, 1080)
+[2025-08-18 16:38:41,676: INFO/ForkPoolWorker-16] Starting frame analysis...
+[2025-08-18 16:38:45,979: INFO/ForkPoolWorker-16] Analysis results: {'logos': [{'label': 'Google', 'confidence': 0.5482607483863831, 'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}}], 'visual': {'dominant_colors': [[22, 23, 27], [177, 177, 180], [72, 77, 103]], 'brightness_level': 0.13457802728859034, 'contrast_level': 0.13673370563295395, 'saturation_level': 0.22427909215383685}}
+[2025-08-18 16:38:45,989: INFO/ForkPoolWorker-16] Processed segment /home/mariano/wdir/snk/media-analyzer/media/43606ec7-786c-4f7d-acf3-95981f9e5ebe-17.ts: 1 detections
+[2025-08-18 16:38:46,008: INFO/ForkPoolWorker-16] Task ai_processing.tasks.process_video_segment[2ce8e89e-046c-4ded-860f-addaa5bd7fa0] succeeded in 4.389555325964466s: {'detections': 1, 'analysis_id': '918ac225-e0e8-41f0-82e8-328f4f5ae559'}
+[2025-08-18 16:38:49,610: INFO/MainProcess] Task ai_processing.tasks.process_video_segment[536e39ce-e31b-4b06-960d-9d667ff388b4] received
