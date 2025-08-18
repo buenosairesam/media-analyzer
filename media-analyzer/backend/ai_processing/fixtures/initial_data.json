@@ -1,0 +1,70 @@
+[
+  {
+    "model": "ai_processing.analysisprovider",
+    "pk": "550e8400-e29b-41d4-a716-446655440001",
+    "fields": {
+      "name": "Google Cloud Vision",
+      "provider_type": "gcp_vision",
+      "model_identifier": "cloud-vision-api",
+      "capabilities": ["object_detection", "logo_detection", "text_detection"],
+      "active": true,
+      "api_config": {}
+    }
+  },
+  {
+    "model": "ai_processing.analysisprovider", 
+    "pk": "550e8400-e29b-41d4-a716-446655440002",
+    "fields": {
+      "name": "Local CLIP",
+      "provider_type": "local_clip",
+      "model_identifier": "openai/clip-vit-base-patch32",
+      "capabilities": ["logo_detection", "scene_analysis"],
+      "active": false,
+      "api_config": {}
+    }
+  },
+  {
+    "model": "ai_processing.brand",
+    "pk": "550e8400-e29b-41d4-a716-446655440010",
+    "fields": {
+      "name": "Apple",
+      "search_terms": ["Apple logo", "iPhone", "MacBook", "iPad"],
+      "active": true,
+      "category": "tech",
+      "created_at": "2025-08-18T00:00:00Z"
+    }
+  },
+  {
+    "model": "ai_processing.brand",
+    "pk": "550e8400-e29b-41d4-a716-446655440011",
+    "fields": {
+      "name": "Google",
+      "search_terms": ["Google logo", "Android", "Pixel phone"],
+      "active": true,
+      "category": "tech",
+      "created_at": "2025-08-18T00:00:00Z"
+    }
+  },
+  {
+    "model": "ai_processing.brand",
+    "pk": "550e8400-e29b-41d4-a716-446655440012",
+    "fields": {
+      "name": "Nike",
+      "search_terms": ["Nike logo", "Nike swoosh"],
+      "active": true,
+      "category": "fashion",
+      "created_at": "2025-08-18T00:00:00Z"
+    }
+  },
+  {
+    "model": "ai_processing.brand",
+    "pk": "550e8400-e29b-41d4-a716-446655440013",
+    "fields": {
+      "name": "Coca Cola",
+      "search_terms": ["Coca Cola logo", "Coke bottle"],
+      "active": true,
+      "category": "beverage",
+      "created_at": "2025-08-18T00:00:00Z"
+    }
+  }
+]

@@ -407,3 +407,101 @@ This approach gives you:
 - **Easy CI/CD** since K8s manifests are tested locally
 
 The planning already supports this perfectly - you develop fast locally and test orchestration when needed!
+
+
+CURRENT STEP 
+
+now that I have a basic stream pipeline a need to add an AI feature (something simple) before stepping everything to something that scales. I was thinking on detecting my extend hand, but maybe some more bussines oriented feature would work better (read the very first message with the JD in spanish to think about this)
+
+Edit
+Looking back at the job description, they mention analyzing "millones de emisiones en medios y redes sociales" for communication and advertising optimization. For a business-oriented AI feature that aligns with Seenka's focus, I'd suggest:
+
+🎯 Brand/Logo Detection
+Business Value: Identify brands and logos in video streams (like TV broadcasts, social media content)
+
+Detect when competitors appear in content
+Monitor brand visibility and placement
+Track advertising effectiveness
+Technical Implementation:
+
+Use CLIP for general brand recognition
+Train on common logos/brand imagery
+Output: Brand name, confidence, screen position, duration
+📺 Content Classification
+Business Value: Categorize video content for media monitoring
+
+Detect content types: "news", "sports", "entertainment", "advertising"
+Identify show segments vs commercial breaks
+Monitor content themes and topics
+Technical Implementation:
+
+CLIP scene classification with predefined categories
+Frame sampling every few seconds
+Output: Content category, confidence, timestamp
+🗣️ Speaker Detection
+Business Value: Media monitoring and audience analysis
+
+Count people on screen (audience size estimation)
+Detect when someone is speaking/presenting
+Monitor speaker time and engagement
+Technical Implementation:
+
+YOLO for person detection
+Basic pose estimation to detect "presentation pose"
+Output: Person count, speaking activity, screen position
+My Recommendation: Content Classification
+Why it's perfect for your demo:
+
+Business relevant: Directly matches Seenka's media analysis focus
+Technically achievable: CLIP can classify scenes out-of-the-box
+Visually impressive: Live categorization overlay on your OBS stream
+Extensible: Easy to add more categories or confidence thresholds
+Demo scenario: Stream different content types with OBS (news clips, sports, entertainment) and watch the AI classify them in real-time.
+
+Which direction appeals to you most? The hand detection is cool for personal interaction, but content classification would really showcase understanding of their business domain.
+
+
+
+
+Im using streams of myself (I have a decent setup) so for now the input will be just that but I think i can be fun if I display logos with my phone or something like that
+
+Edit
+Perfect! Logo detection with your phone is brilliant - it's both business-relevant (brand monitoring) and interactive demo-friendly. You can hold up logos on your phone screen or physical items and watch the AI detect them in real-time.
+
+🏷️ Logo Detection Implementation
+Simple Approach (Weekend-friendly):
+CLIP-based Brand Recognition:
+
+python
+# Use CLIP's zero-shot classification
+brands = ["Apple", "Google", "Nike", "Coca-Cola", "McDonald's", "Amazon"]
+# Hold up logos on phone/laptop and classify scenes
+Demo Flow:
+
+You stream yourself with OBS
+Hold up different brand logos on your phone/laptop screen
+AI detects and labels them with confidence scores
+Live overlay shows: "Apple Logo detected (87% confidence)"
+Enhanced Approach:
+Combine YOLO + CLIP:
+
+YOLO: Detect objects in scene (phone, laptop, clothing, etc.)
+CLIP: Classify detected regions for brand/logo content
+Output: "iPhone detected", "Nike logo on shirt", "Starbucks cup visible"
+Fun Demo Scenarios:
+Tech Logos: Show Apple, Google, Microsoft logos on your devices
+Fashion Brands: Wear branded clothing/accessories
+Food/Drink: Hold up branded items from your desk
+Mixed Reality: Point phone camera at branded items around your room
+Business Value Demo:
+Brand Monitoring: "Track when competitors appear in streams"
+Advertising Analysis: "Measure brand visibility duration and positioning"
+Content Compliance: "Detect unauthorized brand usage"
+Implementation in Your Matrix:
+This fits perfectly in AI Analysis → Local Single Server:
+
+ Frame extraction from HLS ✓
+ CLIP logo classification (instead of YOLO objects)
+ Analysis results storage
+ Results API endpoint
+Want to start with basic CLIP brand classification, or go straight for the object detection + brand recognition combo?
