@@ -32,7 +32,7 @@ class VideoAnalysis(models.Model):
     segment_path = models.CharField(max_length=500)
     timestamp = models.DateTimeField(auto_now_add=True)
     processing_time = models.FloatField(null=True)
-    provider = models.ForeignKey(AnalysisProvider, on_delete=models.CASCADE)
+    provider = models.ForeignKey(AnalysisProvider, on_delete=models.CASCADE, null=True, blank=True)
     analysis_type = models.CharField(max_length=50)
     confidence_threshold = models.FloatField(default=0.5)
     frame_timestamp = models.FloatField()
@@ -46,7 +46,7 @@ class VideoAnalysis(models.Model):
             'processing_time': self.processing_time,
             'analysis_type': self.analysis_type,
             'frame_timestamp': self.frame_timestamp,
-            'provider': self.provider.name,
+            'provider': self.provider.name if self.provider else 'local',
             'detections': [d.to_dict() for d in self.detections.all()],
             'visual': self.visual.to_dict() if hasattr(self, 'visual') else None
         }

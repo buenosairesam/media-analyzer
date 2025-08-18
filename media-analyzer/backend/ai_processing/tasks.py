@@ -4,14 +4,16 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .analysis_engine import AnalysisEngine
 from .models import VideoAnalysis, DetectionResult, VisualAnalysis, ProcessingQueue, AnalysisProvider
+from .config_manager import config_manager
 
 logger = logging.getLogger(__name__)
 channel_layer = get_channel_layer()
 
 
-@shared_task(bind=True)
-def process_video_segment(self, stream_id, segment_path):
-    """Process a video segment with AI analysis"""
+@shared_task(bind=True, queue='logo_detection')
+def analyze_logo_detection(self, stream_id, segment_path):
+    """Dedicated task for logo detection analysis"""
+    queue_item = None
     try:
         # Update queue status
         queue_item = ProcessingQueue.objects.filter(
@@ -24,139 +26,199 @@ def process_video_segment(self, stream_id, segment_path):
             queue_item.status = 'processing'
             queue_item.save()
 
-        # Initialize analysis engine
-        engine = AnalysisEngine()
-        
-        # Debug: Check all providers
-        all_providers = AnalysisProvider.objects.all()
-        logger.info(f"Found {all_providers.count()} total providers:")
-        for p in all_providers:
-            logger.info(f"  - {p.name}: {p.provider_type} (active: {p.active})")
-        
-        # Get logo detection provider
-        logo_provider = AnalysisProvider.objects.filter(
-            provider_type='local_clip'
-        ).first()
-        
-        if not logo_provider:
-            logger.error("No CLIP provider found in database at all!")
+        # Check if logo detection is configured
+        if not config_manager.has_capability('logo_detection'):
+            logger.error("No logo detection provider configured")
             if queue_item:
                 queue_item.status = 'failed'
-                queue_item.error_message = 'No CLIP provider in database'
+                queue_item.error_message = 'No logo detection provider configured'
                 queue_item.save()
-            return {"error": "No CLIP provider in database"}
+            return {"error": "No logo detection provider configured"}
         
-        logger.info(f"Found CLIP provider: {logo_provider.name} (active: {logo_provider.active})")
+        # Initialize analysis engine with cached config
+        engine = AnalysisEngine()
+        logo_config = config_manager.get_provider_config('logo_detection')
+        engine.configure_providers({'logo_detection': logo_config})
         
-        if not logo_provider.active:
-            logo_provider.active = True
-            logo_provider.save()
-            logger.info(f"Auto-activated CLIP provider: {logo_provider.name}")
+        # Extract and analyze frame
+        frame = engine.extract_frame_from_segment(segment_path)
+        if not frame:
+            logger.error(f"Failed to extract frame from {segment_path}")
+            if queue_item:
+                queue_item.status = 'failed'
+                queue_item.error_message = 'Failed to extract frame from segment'
+                queue_item.save()
+            return {"error": "Failed to extract frame"}
         
-        if logo_provider:
-            # Configure engine with logo detection
-            config = {
-                'logo_detection': {
-                    'provider_type': 'local_clip',
-                    'model_identifier': logo_provider.model_identifier
+        # Analyze for logos only
+        analysis_results = engine.analyze_frame(frame, ['logo_detection'], confidence_threshold=0.3)
+        
+        # Store results
+        provider_info = config_manager.get_provider_by_type(logo_config['provider_type'])
+        provider = AnalysisProvider.objects.get(id=provider_info['id'])
+        
+        analysis = VideoAnalysis.objects.create(
+            stream_id=stream_id,
+            segment_path=segment_path,
+            provider=provider,
+            analysis_type='logo_detection',
+            frame_timestamp=0.0,
+            confidence_threshold=0.3
+        )
+        
+        detections = []
+        if 'logos' in analysis_results:
+            for logo in analysis_results['logos']:
+                detection = DetectionResult.objects.create(
+                    analysis=analysis,
+                    label=logo['label'],
+                    confidence=logo['confidence'],
+                    bbox_x=logo['bbox']['x'],
+                    bbox_y=logo['bbox']['y'],
+                    bbox_width=logo['bbox']['width'],
+                    bbox_height=logo['bbox']['height'],
+                    detection_type='logo'
+                )
+                detections.append(detection.to_dict())
+        
+        # Send results via WebSocket if detections found
+        if detections:
+            async_to_sync(channel_layer.group_send)(
+                f"stream_{stream_id}",
+                {
+                    "type": "analysis_update",
+                    "analysis": analysis.to_dict()
                 }
-            }
-            logger.info(f"Configuring engine with config: {config}")
-            engine.configure_providers(config)
-            logger.info("Engine configuration completed")
-            
-            # Extract frame from segment
-            logger.info(f"Extracting frame from: {segment_path}")
-            frame = engine.extract_frame_from_segment(segment_path)
-            if frame:
-                logger.info(f"Frame extracted successfully, size: {frame.size}")
-                # Analyze frame for logos
-                logger.info("Starting frame analysis...")
-                analysis_results = engine.analyze_frame(
-                    frame, 
-                    ['logo_detection', 'visual_analysis'],
-                    confidence_threshold=0.3
-                )
-                logger.info(f"Analysis results: {analysis_results}")
-                
-                # Store analysis results
-                analysis = VideoAnalysis.objects.create(
-                    stream_id=stream_id,
-                    segment_path=segment_path,
-                    provider=logo_provider,
-                    analysis_type='logo_detection',
-                    frame_timestamp=0.0,
-                    confidence_threshold=0.3
-                )
-                
-                # Store detections
-                detections = []
-                if 'logos' in analysis_results:
-                    for logo in analysis_results['logos']:
-                        detection = DetectionResult.objects.create(
-                            analysis=analysis,
-                            label=logo['label'],
-                            confidence=logo['confidence'],
-                            bbox_x=logo['bbox']['x'],
-                            bbox_y=logo['bbox']['y'],
-                            bbox_width=logo['bbox']['width'],
-                            bbox_height=logo['bbox']['height'],
-                            detection_type='logo'
-                        )
-                        detections.append(detection.to_dict())
-                
-                # Store visual analysis
-                if 'visual' in analysis_results:
-                    VisualAnalysis.objects.create(
-                        analysis=analysis,
-                        dominant_colors=analysis_results['visual']['dominant_colors'],
-                        brightness_level=analysis_results['visual']['brightness_level'],
-                        contrast_level=analysis_results['visual']['contrast_level'],
-                        saturation_level=analysis_results['visual']['saturation_level']
-                    )
-                
-                # Send results via WebSocket
-                if detections:
-                    async_to_sync(channel_layer.group_send)(
-                        f"stream_{stream_id}",
-                        {
-                            "type": "analysis_update",
-                            "analysis": analysis.to_dict()
-                        }
-                    )
-                
-                # Update queue status
-                if queue_item:
-                    queue_item.status = 'completed'
-                    queue_item.save()
-                
-                logger.info(f"Processed segment {segment_path}: {len(detections)} detections")
-                return {"detections": len(detections), "analysis_id": str(analysis.id)}
-            else:
-                logger.error("Failed to extract frame from segment")
-                if queue_item:
-                    queue_item.status = 'failed'
-                    queue_item.error_message = 'Failed to extract frame from video segment'
-                    queue_item.save()
-                return {"error": "Failed to extract frame from segment"}
+            )
         
-        # No provider configured
+        # Update queue status
         if queue_item:
-            queue_item.status = 'failed'
-            queue_item.error_message = 'No active AI provider configured'
+            queue_item.status = 'completed'
             queue_item.save()
         
-        return {"error": "No AI provider configured"}
+        if detections:
+            logger.info(f"Logo detection: {len(detections)} detections found")
+        else:
+            logger.debug(f"Logo detection: no detections found")
+        return {"detections": len(detections), "analysis_id": str(analysis.id)}
         
     except Exception as e:
-        logger.error(f"Error processing segment {segment_path}: {e}")
-        
+        logger.error(f"Logo detection failed for {segment_path}: {e}")
         if queue_item:
             queue_item.status = 'failed'
             queue_item.error_message = str(e)
             queue_item.save()
-        
         raise self.retry(countdown=60, max_retries=3)
+
+
+@shared_task(bind=True, queue='visual_analysis') 
+def analyze_visual_properties(self, stream_id, segment_path):
+    """Dedicated task for visual property analysis"""
+    queue_item = None
+    try:
+        # Update queue status
+        queue_item = ProcessingQueue.objects.filter(
+            stream_id=stream_id, 
+            segment_path=segment_path,
+            status='pending'
+        ).first()
+        
+        if queue_item:
+            queue_item.status = 'processing'  
+            queue_item.save()
+
+        # Initialize analysis engine
+        engine = AnalysisEngine()
+        
+        # Extract and analyze frame
+        frame = engine.extract_frame_from_segment(segment_path)
+        if not frame:
+            logger.error(f"Failed to extract frame from {segment_path}")
+            if queue_item:
+                queue_item.status = 'failed'
+                queue_item.error_message = 'Failed to extract frame from segment'
+                queue_item.save()
+            return {"error": "Failed to extract frame"}
+        
+        # Analyze visual properties (always available locally)
+        analysis_results = engine.analyze_frame(frame, ['visual_analysis'])
+        
+        # Store results (no provider needed for local visual analysis)
+        analysis = VideoAnalysis.objects.create(
+            stream_id=stream_id,
+            segment_path=segment_path,
+            provider=None,  # Local analysis
+            analysis_type='visual_analysis',
+            frame_timestamp=0.0,
+            confidence_threshold=0.0
+        )
+        
+        # Store visual analysis
+        if 'visual' in analysis_results:
+            VisualAnalysis.objects.create(
+                analysis=analysis,
+                dominant_colors=analysis_results['visual']['dominant_colors'],
+                brightness_level=analysis_results['visual']['brightness_level'],
+                contrast_level=analysis_results['visual']['contrast_level'],
+                saturation_level=analysis_results['visual']['saturation_level']
+            )
+        
+        # Send results via WebSocket
+        async_to_sync(channel_layer.group_send)(
+            f"stream_{stream_id}",
+            {
+                "type": "analysis_update",
+                "analysis": analysis.to_dict()
+            }
+        )
+        
+        # Update queue status
+        if queue_item:
+            queue_item.status = 'completed'
+            queue_item.save()
+        
+        logger.debug(f"Visual analysis completed for {segment_path}")
+        return {"analysis_id": str(analysis.id)}
+        
+    except Exception as e:
+        logger.error(f"Visual analysis failed for {segment_path}: {e}")
+        if queue_item:
+            queue_item.status = 'failed'
+            queue_item.error_message = str(e)
+            queue_item.save()
+        raise self.retry(countdown=60, max_retries=3)
+
+
+@shared_task(bind=True)
+def process_video_segment(self, stream_id, segment_path):
+    """Main task that dispatches to specialized analysis tasks"""
+    try:
+        # Dispatch to specialized queues based on available capabilities
+        active_capabilities = config_manager.get_active_capabilities()
+        
+        if 'logo_detection' in active_capabilities:
+            analyze_logo_detection.delay(stream_id, segment_path)
+        
+        # Visual analysis disabled for performance - only logo detection
+        # analyze_visual_properties.delay(stream_id, segment_path)
+        
+        return {"dispatched": True, "capabilities": active_capabilities}
+        
+    except Exception as e:
+        logger.error(f"Failed to dispatch analysis for {segment_path}: {e}")
+        return {"error": str(e)}
+
+
+@shared_task(queue='config_management')
+def reload_analysis_config():
+    """Task to reload analysis provider configuration"""
+    try:
+        config_manager.reload_config()
+        logger.info("Analysis configuration reloaded successfully")
+        return {"status": "success", "capabilities": config_manager.get_active_capabilities()}
+    except Exception as e:
+        logger.error(f"Failed to reload analysis configuration: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 @shared_task
