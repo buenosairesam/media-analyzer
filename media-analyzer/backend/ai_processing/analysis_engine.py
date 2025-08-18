@@ -48,14 +48,8 @@ class AnalysisEngine:
             if not cap.isOpened():
                 return None
                 
-            if timestamp:
-                fps = cap.get(cv2.CAP_PROP_FPS)
-                frame_number = int(timestamp * fps)
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-            else:
-                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                cap.set(cv2.CAP_PROP_POS_FRAMES, total_frames // 2)
-                
+            # For TS segments, seeking is problematic, just read first frame
+            # This is suitable for real-time analysis where any frame is representative
             ret, frame = cap.read()
             cap.release()
             

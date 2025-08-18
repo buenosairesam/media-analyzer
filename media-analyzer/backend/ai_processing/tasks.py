@@ -78,8 +78,6 @@ def process_video_segment(self, stream_id, segment_path):
                     confidence_threshold=0.3
                 )
                 logger.info(f"Analysis results: {analysis_results}")
-            else:
-                logger.error("Failed to extract frame from segment")
                 
                 # Store analysis results
                 analysis = VideoAnalysis.objects.create(
@@ -134,6 +132,13 @@ def process_video_segment(self, stream_id, segment_path):
                 
                 logger.info(f"Processed segment {segment_path}: {len(detections)} detections")
                 return {"detections": len(detections), "analysis_id": str(analysis.id)}
+            else:
+                logger.error("Failed to extract frame from segment")
+                if queue_item:
+                    queue_item.status = 'failed'
+                    queue_item.error_message = 'Failed to extract frame from video segment'
+                    queue_item.save()
+                return {"error": "Failed to extract frame from segment"}
         
         # No provider configured
         if queue_item:
