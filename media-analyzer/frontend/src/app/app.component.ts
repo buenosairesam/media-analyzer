@@ -16,6 +16,7 @@ export class AppComponent {
   selectedStreamUrl: string = '';
 
   onStreamSelected(streamUrl: string) {
+    console.log('App received stream URL:', streamUrl);
     this.selectedStreamUrl = streamUrl;
   }
 }

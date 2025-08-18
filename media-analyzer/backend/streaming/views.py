@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404
@@ -8,6 +8,7 @@ from .source_adapters import SourceAdapterFactory
 import json
 import uuid
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ def create_stream(request):
             'processing_mode': stream.processing_mode,
             'stream_key': stream.stream_key,
             'status': stream.status,
-            'hls_playlist_url': f"{settings.HLS_BASE_URL}/hls/{stream.id}/playlist.m3u8" if stream.status == 'active' else None,
+            'hls_playlist_url': f"{settings.HLS_BASE_URL}{settings.HLS_ENDPOINT_PATH}{stream.stream_key}.m3u8" if stream.status == 'active' else None,
             'rtmp_ingest_url': f"rtmp://{request.get_host().split(':')[0]}:{settings.RTMP_PORT}/live/{stream.stream_key}",
             'created_at': stream.created_at.isoformat()
         })
@@ -51,7 +52,7 @@ def list_streams(request):
             'source_type': s.source_type,
             'processing_mode': s.processing_mode,
             'status': s.status,
-            'hls_playlist_url': f"{settings.HLS_BASE_URL}/hls/{s.id}/playlist.m3u8" if s.status == 'active' else None,
+            'hls_playlist_url': f"{settings.HLS_BASE_URL}{settings.HLS_ENDPOINT_PATH}{s.stream_key}.m3u8" if s.status == 'active' else None,
             'rtmp_ingest_url': f"rtmp://{request.get_host().split(':')[0]}:{settings.RTMP_PORT}/live/{s.stream_key}",
             'created_at': s.created_at.isoformat()
         } for s in streams]
@@ -71,7 +72,7 @@ def start_stream(request, stream_id):
         if success:
             return JsonResponse({
                 'message': 'Stream started successfully',
-                'hls_playlist_url': stream.hls_playlist_url
+                'hls_playlist_url': f"{settings.HLS_BASE_URL}{settings.HLS_ENDPOINT_PATH}{stream.stream_key}.m3u8"
             })
         else:
             return JsonResponse({'error': 'Failed to start stream'}, status=500)
@@ -99,3 +100,28 @@ def stop_stream(request, stream_id):
     except Exception as e:
         logger.error(f"Error stopping stream {stream_id}: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+def serve_hls_file(request, filename):
+    """Serve HLS files with proper headers"""
+    # Files are stored in project media directory  
+    media_dir = os.path.join(settings.BASE_DIR.parent.parent, 'media')
+    file_path = os.path.join(media_dir, filename)
+    
+    # Check if file exists
+    if not os.path.exists(file_path):
+        raise Http404("HLS file not found")
+    
+    # Determine content type
+    if filename.endswith('.m3u8'):
+        content_type = 'application/vnd.apple.mpegurl'
+    elif filename.endswith('.ts'):
+        content_type = 'video/mp2t'
+    else:
+        content_type = 'application/octet-stream'
+    
+    # Read and serve file
+    with open(file_path, 'rb') as f:
+        response = HttpResponse(f.read(), content_type=content_type)
+        response['Cache-Control'] = 'no-cache'
+        return response

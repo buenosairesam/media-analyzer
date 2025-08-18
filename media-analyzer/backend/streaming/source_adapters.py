@@ -55,9 +55,7 @@ class RTMPSourceAdapter(VideoSourceAdapter):
             # Start FFmpeg conversion
             self.process = ffmpeg_handler.rtmp_to_hls(rtmp_url, playlist_path)
             
-            # Update stream with HLS URL
-            self.stream.hls_playlist_url = f"/media/hls/{self.stream.id}/playlist.m3u8"
-            self.stream.save(update_fields=['hls_playlist_url'])
+            # HLS URL is now generated dynamically from settings
             
             self.update_stream_status(StreamStatus.ACTIVE)
             logger.info(f"Started RTMP processing for stream {self.stream.id}")
@@ -109,9 +107,7 @@ class FileSourceAdapter(VideoSourceAdapter):
             # Start FFmpeg conversion
             self.process = ffmpeg_handler.file_to_hls(self.stream.source_file.path, playlist_path)
             
-            # Update stream with HLS URL
-            self.stream.hls_playlist_url = f"/media/hls/{self.stream.id}/playlist.m3u8"
-            self.stream.save(update_fields=['hls_playlist_url'])
+            # HLS URL is now generated dynamically from settings
             
             self.update_stream_status(StreamStatus.ACTIVE)
             logger.info(f"Started file processing for stream {self.stream.id}")

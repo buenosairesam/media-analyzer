@@ -1,0 +1,37 @@
+1. Start the stack:
+  # Start Docker services
+  docker compose --env-file .env.development up -d
+
+  # Start Django backend (in separate terminal)
+  cd backend && python manage.py runserver
+
+  # Start Angular frontend (in separate terminal)  
+  cd frontend && ng serve
+
+  2. Test the API:
+  # Check if Django API works
+  curl http://localhost:8000/api/streams/
+
+  # Create a test stream
+  curl -X POST http://localhost:8000/api/streams/create/ \
+    -H "Content-Type: application/json" \
+    -d '{"name": "Test Stream"}'
+
+  3. Test with OBS:
+  1. Open OBS Studio
+  2. Go to Settings → Stream
+  3. Set:
+    - Service: Custom
+    - Server: rtmp://localhost:1935/live
+    - Stream Key: (Copy from API response or frontend)
+  4. Start streaming in OBS
+
+  4. Test video playback:
+  1. Open http://localhost:4200
+  2. Create a stream in the frontend
+  3. Copy the RTMP URL to OBS
+  4. Start the stream
+  5. Click "View" to watch the HLS stream
+
+  Expected flow:
+  OBS → RTMP (port 1935) → NGINX-RTMP → HLS segments → Angular player

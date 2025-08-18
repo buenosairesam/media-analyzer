@@ -1,5 +1,38 @@
 media-analyzer/backend/media_analyzer/urls.py
 	why MEDIA_ROOT just in debug
 
+	this to store media files which is obvious not ideal to store in the db (at least on postgres)
+
+
 nginx
 	why add cors straigth in nginx conf
+
+
+	> is it correct to have cors configuration in nginx?
+
+	● Yes and No - it depends on the service responsibility:
+
+	  NGINX CORS is correct when:
+	  - NGINX serves static media files (HLS videos)
+	  - Browser needs to access video files cross-origin
+	  - NGINX is the media server
+
+	  Django CORS is correct when:
+	  - Django serves API endpoints
+	  - Angular makes API calls cross-origin
+	  - Django is the application server
+
+	  Your current setup needs BOTH:
+	  - Django CORS: For Angular → Django API calls (/api/streams/)
+	  - NGINX CORS: For Angular → NGINX media requests (/playlist.m3u8, /segment.ts)
+
+	  Separation of concerns:
+	  Angular (4200) → Django (8000)     # API calls - Django CORS
+	  Angular (4200) → NGINX (8081)      # Video files - NGINX CORS
+
+	  In production/K8s, you'd typically:
+	  - Have one ingress controller handle all CORS
+	  - Or use service mesh (Istio) for cross-origin policies
+
+	  But for development, having CORS in both services is correct because they serve different content types to the browser.
+

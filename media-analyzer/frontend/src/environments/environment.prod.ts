@@ -1,4 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: '/api', // Relative URL works in all environments
+  apiUrl: '/api',  // In production, same origin
+  backendUrl: '',  // In production, same origin
 };
