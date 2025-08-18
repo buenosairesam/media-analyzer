@@ -79,3 +79,17 @@ class TextDetectionAdapterFactory(AdapterFactory):                              
           return TesseractTextDetectionAdapter()                                                                                                                                     │ │
       else:                                                                                                                                                                          │ │
           raise ValueError(f"Unknown text detection provider: {provider_type}")             
+
+
+add aliases to avoid relative imports
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ ../frontend/src/app/components/stream-viewer/stream-viewer.component.ts                                                                                                                │ │
+│ │                                                                                                                                                                                        │ │
+│ │   1    import { Component, ElementRef, Input, ViewChild, AfterViewInit, OnDestroy, OnChanges } from '@angular/core';                                                                   │ │
+│ │   2    import Hls from 'hls.js';                                                                                                                                                       │ │
+│ │   3 +  import { Analysis, DetectionResult } from '../../models/analysis';                                                                                                              │ │
+│ │   4                                                                                                                                                                                    │ │
+│ │   5    @Component({                                                                                                                                                                    │ │
+│ │   6      selector: 'app-stream-viewer',                                                                                                                                                │ │
+│ ╰───────────────────────────────────────────────────────────
+

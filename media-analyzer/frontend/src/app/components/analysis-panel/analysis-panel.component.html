@@ -1,1 +1,68 @@
-<p>analysis-panel works!</p>
+<div class="analysis-panel">
+  <h3>Live Analysis Results</h3>
+  
+  @if (currentVisual) {
+    <div class="visual-analysis">
+      <h4>Visual Properties</h4>
+      <div class="property">
+        <span>Brightness:</span>
+        <div class="brightness-bar">
+          <div class="brightness-fill" [style.width.%]="currentVisual.brightness_level * 100"></div>
+        </div>
+        <span>{{(currentVisual.brightness_level * 100) | number:'1.0-0'}}%</span>
+      </div>
+      
+      @if (currentVisual.dominant_colors && currentVisual.dominant_colors.length > 0) {
+        <div class="property">
+          <span>Colors:</span>
+          <div class="color-palette">
+            @for (color of currentVisual.dominant_colors; track $index) {
+              <div class="color-swatch" [style.background]="getColorStyle([color])"></div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+  
+  @if (getDetectionsByType('logo').length > 0) {
+    <div class="detection-section">
+      <h4>🏷️ Logos Detected</h4>
+      @for (detection of getDetectionsByType('logo'); track detection.id) {
+        <div class="detection-item logo">
+          <span class="label">{{detection.label}}</span>
+          <span class="confidence">{{(detection.confidence * 100) | number:'1.0-0'}}%</span>
+        </div>
+      }
+    </div>
+  }
+  
+  @if (getDetectionsByType('object').length > 0) {
+    <div class="detection-section">
+      <h4>📦 Objects Detected</h4>
+      @for (detection of getDetectionsByType('object'); track detection.id) {
+        <div class="detection-item object">
+          <span class="label">{{detection.label}}</span>
+          <span class="confidence">{{(detection.confidence * 100) | number:'1.0-0'}}%</span>
+        </div>
+      }
+    </div>
+  }
+  
+  @if (getDetectionsByType('text').length > 0) {
+    <div class="detection-section">
+      <h4>📝 Text Detected</h4>
+      @for (detection of getDetectionsByType('text'); track detection.id) {
+        <div class="detection-item text">
+          <span class="label">{{detection.label}}</span>
+        </div>
+      }
+    </div>
+  }
+  
+  @if (currentDetections.length === 0) {
+    <div class="no-detections">
+      <p>No detections in current frame</p>
+    </div>
+  }
+</div>

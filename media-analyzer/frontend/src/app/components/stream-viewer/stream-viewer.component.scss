@@ -3,10 +3,25 @@
   max-width: 800px;
   margin: 0 auto;
   
+  .video-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+  }
+  
   .video-player {
     width: 100%;
     height: auto;
     background: #000;
+    border-radius: 8px;
+    display: block;
+  }
+  
+  .detection-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
     border-radius: 8px;
   }
   
