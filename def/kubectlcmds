@@ -56,3 +56,8 @@ kubectl get events -n media-analyzer --sort-by='.lastTimestamp'
 
 # Check why pods are pending
 kubectl describe pod <pod-name> -n media-analyzer | tail -20
+
+# Create required secrets for deployment
+kubectl create secret generic gcp-credentials --from-literal=credentials.json='{}' -n media-analyzer
+kubectl create secret generic django-secrets --from-literal=secret-key='dev-secret-key-for-local-testing' -n media-analyzer
+kubectl create secret generic postgres-secrets --from-literal=username='postgres' --from-literal=password='password' -n media-analyzer
