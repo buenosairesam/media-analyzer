@@ -713,3 +713,6 @@ Your Infrastructure Focus Today:
 Key Deliverable:
 Logo detection working end-to-end in production-ready K8s setup
 
+
+- non free GCP services should use local k8s services that are preferably easy switchable
+- dont add things to gitignore that you don't know if they'll ever be there, just add what's needed as we go
