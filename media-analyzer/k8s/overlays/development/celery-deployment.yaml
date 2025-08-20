@@ -1,34 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: django-app
+  name: celery-worker
   labels:
-    app: django-app
+    app: celery-worker
     component: backend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: django-app
+      app: celery-worker
   template:
     metadata:
       labels:
-        app: django-app
+        app: celery-worker
         component: backend
     spec:
       containers:
-      - name: django
+      - name: celery-worker
         image: media-analyzer-backend:latest
-        ports:
-        - containerPort: 8000
+        command: ["celery", "-A", "media_analyzer", "worker", "-l", "info", "-Q", "logo_detection,visual_analysis,default"]
         env:
         - name: DEBUG
           value: "false"
-        - name: DJANGO_SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: django-secrets
-              key: secret-key
         - name: DB_HOST
           value: "postgres-service"
         - name: DB_NAME
@@ -47,8 +41,6 @@ spec:
           value: "redis-service"
         - name: REDIS_SERVICE_PORT
           value: "6379"
-        - name: ALLOWED_HOSTS
-          value: "localhost,127.0.0.1,django-service,nginx-service"
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: "/var/secrets/google/credentials.json"
         - name: GCP_BUCKET_NAME
@@ -73,33 +65,24 @@ spec:
             configMapKeyRef:
               name: app-config
               key: logo-confidence-threshold
+        - name: ENABLED_BRANDS
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: enabled-brands
         volumeMounts:
         - name: gcp-credentials
           mountPath: /var/secrets/google
           readOnly: true
-        # Note: When USE_CLOUD_STORAGE=true, media files go directly to GCS
-        # Only mount local storage when USE_CLOUD_STORAGE=false
         - name: media-storage
           mountPath: /app/media
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
             memory: "1Gi"
             cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /admin/
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /admin/
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
       volumes:
       - name: gcp-credentials
         secret:

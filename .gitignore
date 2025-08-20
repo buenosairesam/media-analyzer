@@ -5,3 +5,4 @@ __pycache__
 def/ignore
 postgres_data
 media
+media-analyzer-src.tar.gz

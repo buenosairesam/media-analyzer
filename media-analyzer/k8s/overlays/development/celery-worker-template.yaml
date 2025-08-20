@@ -1,0 +1,70 @@
+# Template for creating new analysis workers
+# Copy this file and replace:
+# - WORKER_NAME: e.g., "motion", "text", "face"  
+# - QUEUE_NAME: e.g., "motion_detection", "text_analysis"
+# - REPLICAS: number of workers (0 to disable)
+# - CONCURRENCY: tasks per worker
+# - RESOURCES: memory/CPU based on analysis complexity
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-WORKER_NAME-worker
+  labels:
+    app: celery-WORKER_NAME-worker
+    component: backend
+    queue: QUEUE_NAME
+spec:
+  replicas: 0  # Set to 1+ to enable this analysis type
+  selector:
+    matchLabels:
+      app: celery-WORKER_NAME-worker
+  template:
+    metadata:
+      labels:
+        app: celery-WORKER_NAME-worker
+        component: backend
+        queue: QUEUE_NAME
+    spec:
+      containers:
+      - name: celery-WORKER_NAME-worker
+        image: media-analyzer-backend:latest
+        command: ["celery", "-A", "media_analyzer", "worker", "-l", "info", "-Q", "QUEUE_NAME", "--concurrency=1"]
+        env:
+        - name: DEBUG
+          value: "false"
+        - name: DB_HOST
+          value: "postgres-service"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: password
+        - name: REDIS_SERVICE_HOST
+          value: "redis-service"
+        # Add analysis-specific env vars here
+        volumeMounts:
+        - name: media-storage
+          mountPath: /app/media
+        resources:
+          requests:
+            memory: "512Mi"  # Adjust based on analysis complexity
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: media-storage
+        persistentVolumeClaim:
+          claimName: media-pvc
+
+---
+# Quick scaling commands:
+# Enable:  kubectl scale deployment celery-WORKER_NAME-worker --replicas=2
+# Disable: kubectl scale deployment celery-WORKER_NAME-worker --replicas=0
+# Check:   kubectl get deployments -l queue=QUEUE_NAME
