@@ -90,13 +90,13 @@ spec:
             cpu: "500m"
         livenessProbe:
           httpGet:
-            path: /admin/
+            path: /api/
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /admin/
+            path: /api/
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 5
