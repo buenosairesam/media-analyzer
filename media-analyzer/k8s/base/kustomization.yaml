@@ -11,5 +11,6 @@ resources:
 - deployments/celery-logo-worker.yaml
 - deployments/celery-visual-worker.yaml
 - deployments/nginx-deployment.yaml
+- deployments/frontend-deployment.yaml
 - services/services.yaml
 - ingress/ingress.yaml

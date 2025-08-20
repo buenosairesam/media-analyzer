@@ -18,6 +18,14 @@ docker build -t 127.0.0.1:5005/media-analyzer-backend:latest .
 docker tag 127.0.0.1:5005/media-analyzer-backend:latest ${REGISTRY}/media-analyzer-backend:latest
 cd ..
 
+# Build frontend image (production build)
+echo "Building frontend image..."
+cd frontend
+docker build --target production -t 127.0.0.1:5005/media-analyzer-frontend:latest .
+# Tag for KIND network access
+docker tag 127.0.0.1:5005/media-analyzer-frontend:latest ${REGISTRY}/media-analyzer-frontend:latest
+cd ..
+
 # Build nginx image  
 echo "Building nginx image..."
 cd docker
@@ -29,12 +37,14 @@ cd ..
 # Push to ctlptl registry using localhost address (which supports HTTPS)
 echo "Pushing images to ctlptl registry..."
 docker push 127.0.0.1:5005/media-analyzer-backend:latest
+docker push 127.0.0.1:5005/media-analyzer-frontend:latest
 docker push 127.0.0.1:5005/media-analyzer-nginx:latest
 
 echo "✅ Images built and pushed to ctlptl registry!"
 echo ""
 echo "Images available:"
 echo "- ${REGISTRY}/media-analyzer-backend:latest"
+echo "- ${REGISTRY}/media-analyzer-frontend:latest"
 echo "- ${REGISTRY}/media-analyzer-nginx:latest"
 echo ""
 echo "Ready to deploy with: kubectl apply -k k8s/overlays/development"

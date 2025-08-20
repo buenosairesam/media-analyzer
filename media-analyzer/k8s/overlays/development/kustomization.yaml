@@ -10,6 +10,9 @@ images:
 - name: media-analyzer-backend
   newName: ctlptl-registry:5000/media-analyzer-backend
   newTag: latest
+- name: media-analyzer-frontend
+  newName: ctlptl-registry:5000/media-analyzer-frontend
+  newTag: latest
 - name: media-analyzer-nginx
   newName: ctlptl-registry:5000/media-analyzer-nginx
   newTag: latest

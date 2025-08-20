@@ -33,16 +33,16 @@ case "$1" in
     web)
         echo "Starting Django web server..."
         wait_for_db
-        run_migrations
         collect_static
         load_fixtures
-        exec python manage.py runserver 0.0.0.0:8000
+        exec uvicorn media_analyzer.asgi:application --host 0.0.0.0 --port 8000 --reload
         ;;
     celery-worker)
         echo "Starting Celery worker..."
         wait_for_db
-        # Queue specified in K8s deployment command
-        exec celery -A media_analyzer worker -l info
+        # Pass through additional arguments (queues, hostname, etc.)
+        shift  # Remove 'celery-worker' from $@
+        exec celery -A media_analyzer worker -l info "$@"
         ;;
     celery-beat)
         echo "Starting Celery beat scheduler..."

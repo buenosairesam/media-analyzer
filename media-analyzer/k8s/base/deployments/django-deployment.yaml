@@ -6,7 +6,7 @@ metadata:
     app: django-app
     component: backend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: django-app
@@ -30,7 +30,7 @@ spec:
               name: django-secrets
               key: secret-key
         - name: DB_HOST
-          value: "postgres-service"
+          value: "postgres"
         - name: DB_NAME
           value: "media_analyzer"
         - name: DB_USER
@@ -44,11 +44,11 @@ spec:
               name: postgres-secrets
               key: password
         - name: REDIS_SERVICE_HOST
-          value: "redis-service"
+          value: "redis"
         - name: REDIS_SERVICE_PORT
           value: "6379"
         - name: ALLOWED_HOSTS
-          value: "localhost,127.0.0.1,django-service,nginx-service"
+          value: "localhost,127.0.0.1,backend,frontend,nginx-rtmp,*"
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: "/var/secrets/google/credentials.json"
         - name: GCP_BUCKET_NAME
