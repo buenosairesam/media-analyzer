@@ -4,14 +4,12 @@ kind: Kustomization
 namespace: media-analyzer
 
 resources:
-- namespace.yaml
-- configmaps.yaml
-- persistent-volumes.yaml
-- postgres-statefulset.yaml
-- redis-deployment.yaml
-- django-deployment.yaml
-- celery-logo-worker.yaml
-- celery-visual-worker.yaml
-- nginx-deployment.yaml
-- services.yaml
-- ingress.yaml
+- ../../base
+
+images:
+- name: media-analyzer-backend
+  newName: ctlptl-registry:5000/media-analyzer-backend
+  newTag: latest
+- name: media-analyzer-nginx
+  newName: ctlptl-registry:5000/media-analyzer-nginx
+  newTag: latest

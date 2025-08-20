@@ -171,7 +171,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Media files
 MEDIA_URL = '/media/'
@@ -208,6 +209,7 @@ USE_LOCAL_CLIP = not USE_CLOUD_VISION
 # Storage Configuration  
 USE_CLOUD_STORAGE = os.getenv('USE_CLOUD_STORAGE', 'false').lower() == 'true'
 GCP_BUCKET_NAME = os.getenv('GCP_BUCKET_NAME', 'media-analyzer-segments')
+GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
 
 # GCS Storage Settings (when USE_CLOUD_STORAGE=true)
 if USE_CLOUD_STORAGE:
@@ -229,7 +231,6 @@ else:
 
 # GCP Credentials
 GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
 
 # AI Analysis Strategy
 if USE_CLOUD_VISION:
