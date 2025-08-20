@@ -409,7 +409,7 @@ This approach gives you:
 The planning already supports this perfectly - you develop fast locally and test orchestration when needed!
 
 
-CURRENT STEP 
+STEP DONE
 
 now that I have a basic stream pipeline a need to add an AI feature (something simple) before stepping everything to something that scales. I was thinking on detecting my extend hand, but maybe some more bussines oriented feature would work better (read the very first message with the JD in spanish to think about this)
 
@@ -505,3 +505,211 @@ This fits perfectly in AI Analysis → Local Single Server:
  Analysis results storage
  Results API endpoint
 Want to start with basic CLIP brand classification, or go straight for the object detection + brand recognition combo?
+
+
+CURRENT STEP
+
+Demo Strategy
+For Interviewers:
+
+Show local demo: "Here's the system running locally with GCP integration"
+Explain cloud strategy: "This architecture scales to full GCP with these manifests"
+Demonstrate cloud services: "Logo detection uses Cloud Vision API"
+Show cost optimization: "Uses free tier effectively while maintaining production patterns"
+
+Scaling Path:
+Local K8s → Single VM K8s → GKE Autopilot → Full GKE
+Questions for You:
+
+Comfort with hybrid approach? Local K8s + GCP services vs pure cloud?
+Demo requirements? Do interviewers need to access it remotely, or is screen sharing sufficient?
+AI model preference? Keep local CLIP for demo, or switch to Cloud Vision for "production"?
+Time investment? How much time do you want to spend on infrastructure vs other features?
+
+The hybrid approach gives you the best of both worlds - demonstrates K8s and GCP knowledge without the costs!
+
+
+myself said: def what I prefer 2. would like to extend this not just this interview but as portfolio asset for others and potential people interested in learning how to do it 3. I reckon that design decisions allow for easy switching between the two. 4 today's focus is only infra (only had time for end to end logo detection, so shader effects are postponed indefinitely,  I separated the visual properties on a different celery task to put in different queues but is commented out to test just the logo detection end-to-end and that's the feature that must work in after completing this prod-ready phase)
+
+
+Perfect! Your hybrid approach as a portfolio/learning asset changes everything - much better than a throwaway demo. Let me design this for educational value and real-world applicability.
+Portfolio-Ready Architecture
+Design Principles:
+
+Teachable: Others can follow your setup
+Realistic: Mirrors actual production patterns
+Cost-effective: $0 monthly with scaling options
+Demonstrable: Works for interviews and learning
+
+Hybrid K8s + GCP Implementation
+Phase 1: Local Foundation (Today's Focus)
+┌──────────────────────────────────────────────────────────┐
+│                    Local KIND Cluster                    │
+├─────────────────┬─────────────────┬─────────────────────┤
+│   Django Pod    │   Worker Pod    │   Infrastructure    │
+│ • Web API       │ • Logo Analysis │ • PostgreSQL       │
+│ • Admin         │ • Visual Tasks  │ • Redis             │
+│ • WebSocket     │ • Celery        │ • NGINX             │
+└─────────────────┴─────────────────┴─────────────────────┘
+                           │
+                    ┌─────────────┐
+                    │ GCP Services│
+                    │ • Storage   │
+                    │ • Vision AI │
+                    │ • Logging   │
+                    └─────────────┘
+K8s Manifests Structure:
+k8s/
+├── base/                           # Platform-agnostic
+│   ├── django-deployment.yaml      # Web application
+│   ├── worker-deployment.yaml      # Celery workers
+│   ├── postgres-statefulset.yaml   # Database
+│   ├── redis-deployment.yaml       # Cache/Queue
+│   ├── nginx-deployment.yaml       # Reverse proxy
+│   └── services.yaml              # Internal networking
+├── overlays/
+│   ├── local/                     # KIND cluster
+│   │   ├── kustomization.yaml     # Local configs
+│   │   └── local-storage.yaml     # Local volumes
+│   ├── gcp-single-vm/             # Single VM deployment
+│   │   ├── kustomization.yaml     # VM-specific configs
+│   │   └── resource-limits.yaml   # Memory constraints
+│   └── gcp-production/            # Full GKE deployment
+│       ├── kustomization.yaml     # Production configs
+│       ├── hpa.yaml              # Auto-scaling
+│       └── monitoring.yaml        # Observability
+Today's Infrastructure Implementation
+1. GCP Project Setup (Free Tier)
+bash# Create project and enable APIs
+gcloud projects create media-analyzer-demo
+gcloud config set project media-analyzer-demo
+gcloud services enable vision.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable logging.googleapis.com
+
+# Create service account
+gcloud iam service-accounts create media-analyzer \
+    --display-name="Media Analyzer Service Account"
+
+# Create and download key
+gcloud iam service-accounts keys create credentials.json \
+    --iam-account=media-analyzer@media-analyzer-demo.iam.gserviceaccount.com
+
+# Create storage bucket
+gsutil mb gs://media-analyzer-segments
+2. Local K8s with GCP Integration
+yaml# k8s/base/django-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-app
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: django
+        image: media-analyzer-backend:latest
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/var/secrets/google/credentials.json"
+        - name: GCP_BUCKET_NAME
+          value: "media-analyzer-segments"
+        - name: USE_CLOUD_VISION
+          value: "true"
+        volumeMounts:
+        - name: gcp-credentials
+          mountPath: /var/secrets/google
+          readOnly: true
+      volumes:
+      - name: gcp-credentials
+        secret:
+          secretName: gcp-credentials
+3. Environment Switching Design
+python# backend/media_analyzer/settings/base.py
+import os
+
+# AI Processing Configuration
+USE_CLOUD_VISION = os.getenv('USE_CLOUD_VISION', 'false').lower() == 'true'
+USE_LOCAL_CLIP = not USE_CLOUD_VISION
+
+# Storage Configuration  
+USE_CLOUD_STORAGE = os.getenv('USE_CLOUD_STORAGE', 'false').lower() == 'true'
+GCP_BUCKET_NAME = os.getenv('GCP_BUCKET_NAME', 'media-analyzer-segments')
+
+# AI Analysis Strategy
+if USE_CLOUD_VISION:
+    AI_ANALYSIS_BACKEND = 'ai_processing.backends.CloudVisionBackend'
+else:
+    AI_ANALYSIS_BACKEND = 'ai_processing.backends.LocalClipBackend'
+Portfolio Documentation Strategy
+README Structure:
+markdown# Media Analyzer - Production K8s Deployment
+
+## Architecture Options
+- [Local Development](docs/local-setup.md) - Docker Compose
+- [Hybrid K8s](docs/hybrid-k8s.md) - KIND + GCP Services  
+- [Single VM](docs/single-vm-k8s.md) - k3s on GCP e2-micro
+- [Full Production](docs/production-gke.md) - GKE with auto-scaling
+
+## Cost Analysis
+- Local: $0/month
+- Hybrid: $0/month (free tier)
+- Single VM: $0/month (free tier e2-micro)
+- Production: ~$150/month (full GKE)
+
+## Features Demonstrated
+- ✅ Real-time video streaming (RTMP → HLS)
+- ✅ AI-powered logo detection (CLIP/Cloud Vision)
+- ✅ Kubernetes orchestration
+- ✅ Cloud-native patterns
+- ⏳ Auto-scaling and monitoring
+Deployment Commands for Today:
+bash# 1. Setup GCP credentials in K8s
+kubectl create secret generic gcp-credentials \
+  --from-file=credentials.json=./credentials.json
+
+# 2. Deploy to local KIND
+kubectl apply -k k8s/overlays/local
+
+# 3. Port forward for access
+kubectl port-forward service/nginx 8080:80
+
+# 4. Test logo detection
+curl http://localhost:8080/api/streams/
+Learning/Portfolio Value:
+For Others:
+
+Step-by-step deployment guides
+Cost optimization strategies
+Environment switching patterns
+Real-world K8s manifests
+
+For Interviews:
+
+"Here's how I optimized for $0 monthly cost"
+"This scales from laptop to production GKE"
+"Logo detection works with both local and cloud AI"
+"Others have successfully followed my setup guide"
+
+Today's Checklist:
+
+ GCP project setup with service account
+ K8s secrets for GCP credentials
+ Environment switching for AI backends
+ Local deployment with cloud services
+ Logo detection end-to-end test
+ Documentation for portfolio sharing
+
+Ready to tackle the infrastructure setup? This approach gives you a real portfolio asset that others can learn from while showcasing production-ready patterns!
+
+Your Infrastructure Focus Today:
+
+✅ Hybrid K8s (KIND) + GCP services architecture
+✅ Environment switching between local CLIP and Cloud Vision
+✅ Portfolio-ready documentation approach
+✅ $0 monthly cost with production scaling path
+
+Key Deliverable:
+Logo detection working end-to-end in production-ready K8s setup
+
