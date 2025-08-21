@@ -1,20 +1,8 @@
 import { Component, EventEmitter, Output } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { environment } from '../../../environments/environment';
-
-interface Stream {
-  id: number;
-  name: string;
-  source_type: string;
-  processing_mode: string;
-  status: string;
-  stream_key: string;
-  hls_playlist_url: string | null;
-  rtmp_ingest_url: string;
-  created_at: string;
-}
+import { StreamService } from '../../services/stream.service';
+import { Stream } from '../../models/stream';
 
 @Component({
   selector: 'app-stream-control',
@@ -29,13 +17,14 @@ export class StreamControlComponent {
   streams: Stream[] = [];
   newStreamName = '';
   selectedStream: Stream | null = null;
+  activeTab: 'rtmp' | 'webcam' = 'webcam';
 
-  constructor(private http: HttpClient) {
+  constructor(private streamService: StreamService) {
     this.loadStreams();
   }
 
   loadStreams() {
-    this.http.get<{streams: Stream[]}>(`${environment.apiUrl}/streams/`).subscribe({
+    this.streamService.getStreams().subscribe({
       next: (response) => {
         this.streams = response.streams;
       },
@@ -46,7 +35,7 @@ export class StreamControlComponent {
   createStream() {
     if (!this.newStreamName) return;
 
-    this.http.post<Stream>(`${environment.apiUrl}/streams/create/`, {
+    this.streamService.createStream({
       name: this.newStreamName,
       source_type: 'rtmp',
       processing_mode: 'live'
@@ -60,7 +49,7 @@ export class StreamControlComponent {
   }
 
   startStream(stream: Stream) {
-    this.http.post(`${environment.apiUrl}/streams/${stream.id}/start/`, {}).subscribe({
+    this.streamService.startStream(stream.id).subscribe({
       next: () => {
         this.loadStreams();
       },
@@ -69,12 +58,40 @@ export class StreamControlComponent {
   }
 
   stopStream(stream: Stream) {
-    this.http.post(`${environment.apiUrl}/streams/${stream.id}/stop/`, {}).subscribe({
+    this.streamService.stopStream(stream.id).subscribe({
       next: () => {
         this.loadStreams();
       },
       error: (error) => console.error('Error stopping stream:', error)
     });
+  }
+
+  startWebcam() {
+    this.streamService.startWebcamStream().subscribe({
+      next: (stream) => {
+        this.loadStreams();
+        // Auto-select the webcam stream
+        this.selectStream(stream);
+      },
+      error: (error) => {
+        console.error('Error starting webcam:', error);
+        if (error.status === 409) {
+          alert(`Cannot start webcam: ${error.error.error}`);
+        }
+      }
+    });
+  }
+
+  switchTab(tab: 'rtmp' | 'webcam') {
+    this.activeTab = tab;
+  }
+
+  get rtmpStreams() {
+    return this.streams.filter(stream => stream.source_type === 'rtmp');
+  }
+
+  get webcamStreams() {
+    return this.streams.filter(stream => stream.source_type === 'webcam');
   }
 
   selectStream(stream: Stream) {

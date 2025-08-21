@@ -47,20 +47,22 @@ export class AppComponent implements OnInit, OnDestroy {
   onStreamSelected(streamUrl: string) {
     console.log('App received stream URL:', streamUrl);
     
-    // Convert backend URL to browser-accessible URL using environment config
-    const browserUrl = streamUrl.replace(/^http:\/\/[^\/]+/, environment.hlsBaseUrl);
+    // Convert backend URL to browser-accessible URL
+    // Extract filename from URL: http://nginx-rtmp:8081/webcam-9516729d.m3u8 -> webcam-9516729d.m3u8
+    const filename = streamUrl.split('/').pop() || '';
+    const browserUrl = `/streaming/${filename}`;
     this.selectedStreamUrl = browserUrl;
     console.log('Converted to browser URL:', browserUrl);
     
-    // Extract stream ID from filename: 476c0bd7-d037-4b6c-a29d-0773c19a76c5.m3u8
-    const streamIdMatch = streamUrl.match(/([0-9a-f-]+)\.m3u8/);
+    // Extract stream ID from filename: 476c0bd7-d037-4b6c-a29d-0773c19a76c5.m3u8 or webcam-9516729d.m3u8
+    const streamIdMatch = filename.match(/^([a-zA-Z0-9-]+)\.m3u8$/);
     if (streamIdMatch) {
       this.currentStreamId = streamIdMatch[1];
       console.log('Extracted stream ID:', this.currentStreamId);
       // Connect to WebSocket for this stream
       this.analysisService.connectToStream(this.currentStreamId);
     } else {
-      console.error('Could not extract stream ID from URL:', streamUrl);
+      console.error('Could not extract stream ID from filename:', filename);
     }
   }
 }

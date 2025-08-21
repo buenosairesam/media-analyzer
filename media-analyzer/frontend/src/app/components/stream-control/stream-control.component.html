@@ -1,38 +1,94 @@
 <div class="stream-control">
   <h2>Stream Control</h2>
   
-  <!-- Create New Stream -->
-  <div class="create-stream">
-    <h3>Create Stream</h3>
-    <input 
-      type="text" 
-      [(ngModel)]="newStreamName" 
-      placeholder="Stream name"
-      class="input">
-    <button (click)="createStream()" class="btn btn-primary">Create Stream</button>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button 
+      class="tab" 
+      [class.active]="activeTab === 'webcam'"
+      (click)="switchTab('webcam')">
+      📹 Webcam
+    </button>
+    <button 
+      class="tab" 
+      [class.active]="activeTab === 'rtmp'"
+      (click)="switchTab('rtmp')">
+      📡 RTMP Stream
+    </button>
   </div>
   
-  <!-- Stream List -->
-  <div class="streams-list">
-    <h3>Streams</h3>
-    <div class="stream-item" *ngFor="let stream of streams">
-      <div class="stream-info">
-        <h4>{{ stream.name }}</h4>
-        <p class="status">Status: <span [class]="'status-' + stream.status">{{ stream.status }}</span></p>
-        <p class="rtmp-url">RTMP URL: <code>{{ stream.rtmp_ingest_url }}</code></p>
-        <p class="stream-key">Stream Key: <code>{{ stream.stream_key }}</code></p>
+  <!-- Webcam Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'webcam'">
+    <div class="webcam-section">
+      <h3>Webcam Stream</h3>
+      <p class="description">Start your webcam for real-time logo detection</p>
+      
+      <button (click)="startWebcam()" class="btn btn-webcam">📹 Start Webcam</button>
+      
+      <!-- Webcam Stream List -->
+      <div class="streams-list" *ngIf="webcamStreams.length > 0">
+        <h4>Active Webcam Stream</h4>
+        <div class="stream-item" *ngFor="let stream of webcamStreams">
+          <div class="stream-info">
+            <h4>{{ stream.name }}</h4>
+            <p class="status">Status: <span [class]="'status-' + stream.status">{{ stream.status }}</span></p>
+            <p class="stream-key">Stream Key: <code>{{ stream.stream_key }}</code></p>
+          </div>
+          
+          <div class="stream-actions">
+            <button (click)="startStream(stream)" 
+                    [disabled]="stream.status === 'active'" 
+                    class="btn btn-success">Start</button>
+            <button (click)="stopStream(stream)" 
+                    [disabled]="stream.status === 'inactive'" 
+                    class="btn btn-danger">Stop</button>
+            <button (click)="selectStream(stream)" 
+                    *ngIf="stream.hls_playlist_url"
+                    class="btn btn-info">Load</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- RTMP Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'rtmp'">
+    <div class="rtmp-section">
+      <!-- Create New Stream -->
+      <div class="create-stream">
+        <h3>Create RTMP Stream</h3>
+        <p class="description">Create a stream for OBS or other RTMP sources</p>
+        <input 
+          type="text" 
+          [(ngModel)]="newStreamName" 
+          placeholder="Stream name"
+          class="input">
+        <button (click)="createStream()" class="btn btn-primary">Create Stream</button>
       </div>
       
-      <div class="stream-actions">
-        <button (click)="startStream(stream)" 
-                [disabled]="stream.status === 'active'" 
-                class="btn btn-success">Start</button>
-        <button (click)="stopStream(stream)" 
-                [disabled]="stream.status === 'inactive'" 
-                class="btn btn-danger">Stop</button>
-        <button (click)="selectStream(stream)" 
-                *ngIf="stream.hls_playlist_url"
-                class="btn btn-info">Load</button>
+      <!-- RTMP Stream List -->
+      <div class="streams-list" *ngIf="rtmpStreams.length > 0">
+        <h4>RTMP Streams</h4>
+        <div class="stream-item" *ngFor="let stream of rtmpStreams">
+          <div class="stream-info">
+            <h4>{{ stream.name }}</h4>
+            <p class="status">Status: <span [class]="'status-' + stream.status">{{ stream.status }}</span></p>
+            <p class="rtmp-url">RTMP URL: <code>{{ stream.rtmp_ingest_url }}</code></p>
+            <p class="stream-key">Stream Key: <code>{{ stream.stream_key }}</code></p>
+          </div>
+          
+          <div class="stream-actions">
+            <button (click)="startStream(stream)" 
+                    [disabled]="stream.status === 'active'" 
+                    class="btn btn-success">Start</button>
+            <button (click)="stopStream(stream)" 
+                    [disabled]="stream.status === 'inactive'" 
+                    class="btn btn-danger">Stop</button>
+            <button (click)="selectStream(stream)" 
+                    *ngIf="stream.hls_playlist_url"
+                    class="btn btn-info">Load</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

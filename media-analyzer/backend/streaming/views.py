@@ -35,7 +35,7 @@ def create_stream(request):
             'stream_key': stream.stream_key,
             'status': stream.status,
             'hls_playlist_url': f"{settings.HLS_BASE_URL}{settings.HLS_ENDPOINT_PATH}{stream.stream_key}.m3u8" if stream.status == 'active' else None,
-            'rtmp_ingest_url': f"rtmp://{request.get_host().split(':')[0]}:{settings.RTMP_PORT}/live/{stream.stream_key}",
+            'rtmp_ingest_url': f"rtmp://{request.get_host().split(':')[0]}:{settings.RTMP_PORT}/live",
             'created_at': stream.created_at.isoformat()
         })
         
@@ -54,7 +54,7 @@ def list_streams(request):
             'processing_mode': s.processing_mode,
             'status': s.status,
             'hls_playlist_url': f"{settings.HLS_BASE_URL}{settings.HLS_ENDPOINT_PATH}{s.stream_key}.m3u8" if s.status == 'active' else None,
-            'rtmp_ingest_url': f"rtmp://{request.get_host().split(':')[0]}:{settings.RTMP_PORT}/live/{s.stream_key}",
+            'rtmp_ingest_url': f"rtmp://{request.get_host().split(':')[0]}:{settings.RTMP_PORT}/live",
             'created_at': s.created_at.isoformat()
         } for s in streams]
     })
@@ -121,7 +121,9 @@ def serve_hls_file(request, filename):
                 # Split by dash and take first 5 parts (UUID format)
                 parts = filename.split('-')
                 if len(parts) >= 5:
-                    stream_id = '-'.join(parts[:5])  # Reconstruct UUID
+                    # For UUID: parts[4] might be like "0ac1421b8b8e0.ts", need to clean it
+                    uuid_parts = parts[:4] + [parts[4].split('.')[0].rstrip('0123456789')]  # Remove segment number and extension
+                    stream_id = '-'.join(uuid_parts)  # Reconstruct clean UUID
                     
                     # Queue for analysis
                     analyzer = VideoAnalyzer()
@@ -173,4 +175,54 @@ def trigger_analysis(request, stream_id):
             
     except Exception as e:
         logger.error(f"Error triggering analysis: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def start_webcam_stream(request):
+    """Start or reuse existing webcam stream"""
+    try:
+        # Look for existing webcam stream first
+        webcam_stream = VideoStream.objects.filter(source_type='webcam').first()
+        
+        if not webcam_stream:
+            # Create new webcam stream
+            webcam_stream = VideoStream.objects.create(
+                name='Webcam Stream',
+                source_type='webcam',
+                processing_mode='live',
+                stream_key=str(uuid.uuid4())
+            )
+            logger.info(f"Created new webcam stream: {webcam_stream.id}")
+        
+        # Check if another stream is active
+        active_streams = VideoStream.objects.filter(status=StreamStatus.ACTIVE).exclude(id=webcam_stream.id)
+        if active_streams.exists():
+            return JsonResponse({
+                'error': f'Another stream is active: {active_streams.first().name}',
+                'active_stream': active_streams.first().name
+            }, status=409)
+        
+        # Start the webcam stream if not already active
+        if webcam_stream.status != StreamStatus.ACTIVE:
+            adapter = SourceAdapterFactory.create_adapter(webcam_stream)
+            success = adapter.start_processing()
+            
+            if not success:
+                return JsonResponse({'error': 'Failed to start webcam'}, status=500)
+        
+        return JsonResponse({
+            'id': webcam_stream.id,
+            'name': webcam_stream.name,
+            'source_type': webcam_stream.source_type,
+            'processing_mode': webcam_stream.processing_mode,
+            'stream_key': webcam_stream.stream_key,
+            'status': webcam_stream.status,
+            'hls_playlist_url': f"{settings.HLS_BASE_URL}{settings.HLS_ENDPOINT_PATH}{webcam_stream.stream_key}.m3u8",
+            'created_at': webcam_stream.created_at.isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting webcam stream: {e}")
         return JsonResponse({'error': str(e)}, status=500)
