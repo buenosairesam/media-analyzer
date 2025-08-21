@@ -231,6 +231,24 @@ def start_webcam_stream(request):
             if not success:
                 return JsonResponse({'error': 'Failed to start webcam'}, status=500)
         
+        # Wait for HLS playlist to be ready before returning
+        import time
+        playlist_path = os.path.join(settings.MEDIA_ROOT, f"{webcam_stream.stream_key}.m3u8")
+        max_wait_time = 10  # seconds
+        wait_interval = 0.5  # seconds
+        elapsed_time = 0
+        
+        logger.info(f"Waiting for HLS playlist to be ready: {playlist_path}")
+        while elapsed_time < max_wait_time:
+            if os.path.exists(playlist_path) and os.path.getsize(playlist_path) > 0:
+                logger.info(f"HLS playlist ready after {elapsed_time:.1f}s")
+                break
+            time.sleep(wait_interval)
+            elapsed_time += wait_interval
+        
+        if not os.path.exists(playlist_path):
+            logger.warning(f"HLS playlist not ready after {max_wait_time}s, returning anyway")
+        
         return JsonResponse({
             'id': webcam_stream.id,
             'name': webcam_stream.name,

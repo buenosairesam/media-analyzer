@@ -6,7 +6,8 @@
   <main class="main-content">
     <div class="controls-section">
       <app-stream-control 
-        (streamSelected)="onStreamSelected($event)">
+        (streamSelected)="onStreamSelected($event)"
+        (streamStopped)="onStreamStopped()">
       </app-stream-control>
     </div>
     

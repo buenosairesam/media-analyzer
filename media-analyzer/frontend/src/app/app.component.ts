@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HttpClientModule } from '@angular/common/http';
 import { StreamControlComponent } from './components/stream-control/stream-control.component';
@@ -16,6 +16,8 @@ import { environment } from '../environments/environment';
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit, OnDestroy {
+  @ViewChild(StreamViewerComponent) streamViewer!: StreamViewerComponent;
+  
   title = 'Media Analyzer';
   selectedStreamUrl: string = '';
   currentStreamId: string = '';
@@ -64,5 +66,20 @@ export class AppComponent implements OnInit, OnDestroy {
     } else {
       console.error('Could not extract stream ID from filename:', filename);
     }
+  }
+
+  onStreamStopped() {
+    console.log('Stream stopped - clearing player');
+    // Clear the stream from player
+    if (this.streamViewer) {
+      this.streamViewer.clearStream();
+    }
+    // Clear app state
+    this.selectedStreamUrl = '';
+    this.currentStreamId = '';
+    this.currentDetections = [];
+    this.currentVisual = undefined;
+    // Disconnect from WebSocket
+    this.analysisService.disconnect();
   }
 }

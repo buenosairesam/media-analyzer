@@ -13,6 +13,7 @@ import { Stream } from '../../models/stream';
 })
 export class StreamControlComponent {
   @Output() streamSelected = new EventEmitter<string>();
+  @Output() streamStopped = new EventEmitter<void>();
   
   streams: Stream[] = [];
   newStreamName = '';
@@ -61,6 +62,8 @@ export class StreamControlComponent {
     this.streamService.stopStream(stream.id).subscribe({
       next: () => {
         this.loadStreams();
+        // Emit event to clear the player
+        this.streamStopped.emit();
       },
       error: (error) => console.error('Error stopping stream:', error)
     });
@@ -70,7 +73,7 @@ export class StreamControlComponent {
     this.streamService.startWebcamStream().subscribe({
       next: (stream) => {
         this.loadStreams();
-        // Auto-select the webcam stream
+        // Backend now waits for HLS to be ready, so we can directly select
         this.selectStream(stream);
       },
       error: (error) => {

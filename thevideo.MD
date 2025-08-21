@@ -27,10 +27,11 @@ video structure
 			the setup
 			deskmeter
 			timelapses/ffmpeg
-		make your own path
+		opinions
 			bootcamps
 			pimp-up-your-profile new trend
-		for seenka
+			show the current state of my use of AI tools
+		motivations
 			im not in it (just) for the money
 			video processing is my passion (?
 

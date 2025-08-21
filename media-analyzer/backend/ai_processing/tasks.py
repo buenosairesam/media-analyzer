@@ -99,7 +99,8 @@ def analyze_logo_detection(self, stream_id, segment_path):
             queue_item.save()
         
         if detections:
-            logger.info(f"Logo detection: {len(detections)} detections found")
+            brands_found = [d['label'] for d in detections]
+            logger.info(f"Logo detection: {len(detections)} detections found - brands: {', '.join(brands_found)}")
         else:
             logger.debug(f"Logo detection: no detections found")
         return {"detections": len(detections), "analysis_id": str(analysis.id)}
