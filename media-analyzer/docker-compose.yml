@@ -110,6 +110,29 @@ services:
         condition: service_started
     command: ./entrypoint-celery.sh --queues=default,config_management --hostname=default-worker@%h
 
+  # File Watcher - Monitor HLS segments
+  file-watcher:
+    build:
+      context: ./backend
+      target: development
+    volumes:
+      - ./backend:/app
+      - ./media:/app/media
+    environment:
+      - DEBUG=1
+      - DB_HOST=postgres
+      - DB_NAME=media_analyzer
+      - DB_USER=media_user
+      - DB_PASSWORD=media_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: python manage.py watch_hls_files --poll-interval=2
+
   # Angular Frontend with NGINX (unified approach)
   frontend:
     build:
