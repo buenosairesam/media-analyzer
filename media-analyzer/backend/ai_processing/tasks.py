@@ -50,8 +50,10 @@ def analyze_logo_detection(self, stream_id, segment_path):
                 queue_item.save()
             return {"error": "Failed to extract frame"}
         
-        # Analyze for logos only
-        analysis_results = engine.analyze_frame(frame, ['logo_detection'], confidence_threshold=0.3)
+        # Analyze for logos only - use configured threshold
+        from django.conf import settings
+        confidence = settings.LOGO_DETECTION_CONFIG['confidence_threshold']
+        analysis_results = engine.analyze_frame(frame, ['logo_detection'], confidence_threshold=confidence)
         
         # Store results
         provider_info = config_manager.get_provider_by_type(logo_config['provider_type'])
@@ -63,7 +65,7 @@ def analyze_logo_detection(self, stream_id, segment_path):
             provider=provider,
             analysis_type='logo_detection',
             frame_timestamp=0.0,
-            confidence_threshold=0.3
+            confidence_threshold=confidence
         )
         
         detections = []

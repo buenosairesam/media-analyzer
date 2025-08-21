@@ -2,6 +2,15 @@ from django.db import models
 import uuid
 
 
+def get_default_confidence_threshold():
+    """Get default confidence threshold from settings"""
+    try:
+        from django.conf import settings
+        return settings.LOGO_DETECTION_CONFIG['confidence_threshold']
+    except:
+        return 0.6  # Fallback if settings not available
+
+
 class AnalysisProvider(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
@@ -34,7 +43,7 @@ class VideoAnalysis(models.Model):
     processing_time = models.FloatField(null=True)
     provider = models.ForeignKey(AnalysisProvider, on_delete=models.CASCADE, null=True, blank=True)
     analysis_type = models.CharField(max_length=50)
-    confidence_threshold = models.FloatField(default=0.5)
+    confidence_threshold = models.FloatField(default=get_default_confidence_threshold)
     frame_timestamp = models.FloatField()
     external_request_id = models.CharField(max_length=200, null=True)
     

@@ -244,7 +244,7 @@ else:
 
 # Logo Detection Configuration
 LOGO_DETECTION_CONFIG = {
-    'confidence_threshold': float(os.getenv('LOGO_CONFIDENCE_THRESHOLD', '0.3')),
+    'confidence_threshold': float(os.getenv('LOGO_CONFIDENCE_THRESHOLD', '0.6')),
     'enabled_brands': os.getenv('ENABLED_BRANDS', 'Apple,Google,Nike,Coca-Cola,McDonald,Amazon').split(','),
     'use_cloud_vision': USE_CLOUD_VISION,
 }

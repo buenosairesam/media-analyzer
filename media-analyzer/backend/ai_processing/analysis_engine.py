@@ -76,22 +76,39 @@ class AnalysisEngine:
     def extract_frame_from_segment(self, segment_path, timestamp=None):
         """Extract frame from video segment"""
         try:
+            import os
+            logger.info(f"Attempting to extract frame from: {segment_path}")
+            logger.info(f"File exists: {os.path.exists(segment_path)}")
+            
+            if os.path.exists(segment_path):
+                logger.info(f"File size: {os.path.getsize(segment_path)} bytes")
+            
             cap = cv2.VideoCapture(segment_path)
+            logger.info(f"OpenCV VideoCapture opened: {cap.isOpened()}")
+            
             if not cap.isOpened():
+                logger.error(f"OpenCV failed to open: {segment_path}")
                 return None
                 
             # For TS segments, seeking is problematic, just read first frame
             # This is suitable for real-time analysis where any frame is representative
             ret, frame = cap.read()
+            logger.info(f"Frame read successful: {ret}")
+            
             cap.release()
             
             if ret:
+                logger.info(f"Frame shape: {frame.shape}")
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 return Image.fromarray(frame_rgb)
+            else:
+                logger.error(f"Failed to read frame from {segment_path}")
             return None
                 
         except Exception as e:
             logger.error(f"Error extracting frame: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return None
     
     def analyze_frame(self, image, requested_analysis, confidence_threshold=0.5):

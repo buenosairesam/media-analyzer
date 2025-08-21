@@ -158,8 +158,22 @@ class WebcamSourceAdapter(VideoSourceAdapter):
             # Start FFmpeg conversion
             logger.info(f"Starting FFmpeg webcam conversion with device {device_index}")
             self.process = ffmpeg_handler.webcam_to_hls(device_index, playlist_path)
-            logger.info(f"FFmpeg process started: {self.process}")
             
+            # Check if FFmpeg process started successfully
+            if self.process.poll() is not None:
+                # Process already exited - get error details
+                try:
+                    stdout, stderr = self.process.communicate(timeout=2)
+                    error_msg = stderr.decode('utf-8') if stderr else "Unknown FFmpeg error"
+                    logger.error(f"FFmpeg failed to start webcam: {error_msg}")
+                except Exception as comm_error:
+                    logger.error(f"FFmpeg failed and couldn't read error: {comm_error}")
+                    error_msg = "FFmpeg process failed to start"
+                
+                self.update_stream_status(StreamStatus.ERROR)
+                raise Exception(f"Webcam initialization failed: {error_msg}")
+            
+            logger.info(f"FFmpeg process started successfully with PID: {self.process.pid}")
             self.update_stream_status(StreamStatus.ACTIVE)
             logger.info(f"Started webcam processing for stream {self.stream.id}")
             return True

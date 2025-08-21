@@ -17,15 +17,30 @@ logger = logging.getLogger(__name__)
 @csrf_exempt
 @require_http_methods(["POST"])
 def create_stream(request):
-    """Create new stream"""
+    """Create or update RTMP stream (single stream pattern like webcam)"""
     try:
         data = json.loads(request.body)
-        stream = VideoStream.objects.create(
-            name=data['name'],
-            source_type=data.get('source_type', 'rtmp'),
-            processing_mode=data.get('processing_mode', 'live'),
-            stream_key=str(uuid.uuid4())
-        )
+        source_type = data.get('source_type', 'rtmp')
+        
+        # Look for existing stream of this type first
+        existing_stream = VideoStream.objects.filter(source_type=source_type).first()
+        
+        if existing_stream:
+            # Update existing stream
+            existing_stream.name = data['name']
+            existing_stream.processing_mode = data.get('processing_mode', 'live')
+            existing_stream.save()
+            stream = existing_stream
+            logger.info(f"Updated existing {source_type} stream: {stream.id}")
+        else:
+            # Create new stream
+            stream = VideoStream.objects.create(
+                name=data['name'],
+                source_type=source_type,
+                processing_mode=data.get('processing_mode', 'live'),
+                stream_key=str(uuid.uuid4())
+            )
+            logger.info(f"Created new {source_type} stream: {stream.id}")
         
         return JsonResponse({
             'id': stream.id,
@@ -115,23 +130,27 @@ def serve_hls_file(request, filename):
     
     # Trigger analysis for new .ts segments
     if filename.endswith('.ts'):
+        logger.info(f"Processing .ts file request: {filename}")
         try:
-            # Extract stream ID from UUID-based filename: 43606ec7-786c-4f7d-acf3-95981f9e5ebe-415.ts
-            if '-' in filename:
-                # Split by dash and take first 5 parts (UUID format)
-                parts = filename.split('-')
-                if len(parts) >= 5:
-                    # For UUID: parts[4] might be like "0ac1421b8b8e0.ts", need to clean it
-                    uuid_parts = parts[:4] + [parts[4].split('.')[0].rstrip('0123456789')]  # Remove segment number and extension
-                    stream_id = '-'.join(uuid_parts)  # Reconstruct clean UUID
-                    
-                    # Queue for analysis
-                    analyzer = VideoAnalyzer()
-                    analyzer.queue_segment_analysis(stream_id, file_path)
-                    logger.info(f"Queued segment for analysis: {filename} (stream: {stream_id})")
+            # Extract stream_key from filename: "stream_key-segment_number.ts" -> "stream_key"
+            # Example: "69f79422-5816-4cf0-9f44-0ac1421b8b8e-123.ts" -> "69f79422-5816-4cf0-9f44-0ac1421b8b8e"
+            base_name = filename.rsplit('.', 1)[0]  # Remove .ts extension
+            stream_id = base_name.rsplit('-', 1)[0]  # Remove last segment: "-123"
+            logger.info(f"Parsed stream_id: {stream_id} from filename: {filename}")
+            
+            if stream_id:
+                # Queue for analysis
+                logger.info(f"Attempting to queue analysis for {filename}")
+                analyzer = VideoAnalyzer()
+                analyzer.queue_segment_analysis(stream_id, file_path)
+                logger.info(f"Queued segment for analysis: {filename} (stream: {stream_id})")
+            else:
+                logger.warning(f"No stream_id extracted from {filename}")
             
         except Exception as e:
             logger.error(f"Error queuing analysis for {filename}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     # Determine content type
     if filename.endswith('.m3u8'):

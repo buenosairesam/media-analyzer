@@ -9,6 +9,12 @@ services:
     volumes:
       - ./backend:/app
       - ./media:/app/media
+    # Linux webcam support (comment out on macOS/Windows if needed)
+    devices:
+      - /dev/video0:/dev/video0
+    group_add:
+      - video
+    user: "${UID:-1000}:${GID:-1000}"
     environment:
       - DEBUG=1
       - DB_HOST=postgres
