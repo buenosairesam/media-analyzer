@@ -10,6 +10,7 @@ export class AnalysisService {
   private currentDetections = new BehaviorSubject<DetectionResult[]>([]);
   private currentVisual = new BehaviorSubject<VisualAnalysis | null>(null);
   private recentAnalyses = new BehaviorSubject<Analysis[]>([]);
+  private streamStartTime: Date | null = null;
   
   public detections$ = this.currentDetections.asObservable();
   public visual$ = this.currentVisual.asObservable();
@@ -23,6 +24,7 @@ export class AnalysisService {
   }
 
   connectToStream(streamId: string) {
+    this.streamStartTime = new Date();
     this.websocketService.connect(streamId);
   }
 
@@ -30,9 +32,22 @@ export class AnalysisService {
     this.websocketService.disconnect();
     this.currentDetections.next([]);
     this.currentVisual.next(null);
+    this.streamStartTime = null;
   }
 
   private handleAnalysisUpdate(analysis: Analysis) {
+    // Filter out analysis from before stream started
+    if (this.streamStartTime && analysis.timestamp) {
+      const analysisTime = new Date(analysis.timestamp);
+      if (analysisTime < this.streamStartTime) {
+        console.log('Ignoring old analysis from before stream start:', {
+          analysisTime: analysisTime.toISOString(),
+          streamStart: this.streamStartTime.toISOString()
+        });
+        return;
+      }
+    }
+    
     // Update recent analyses list
     const current = this.recentAnalyses.value;
     const updated = [analysis, ...current.slice(0, 9)]; // Keep last 10

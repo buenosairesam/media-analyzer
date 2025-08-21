@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 class AnalysisEngine:
     """Main analysis engine that orchestrates capability-specific adapters with execution strategies"""
     
+    _strategy_logged = False
+    
     def __init__(self):
         self.object_detector = None
         self.logo_detector = None
@@ -66,7 +68,9 @@ class AnalysisEngine:
                 logger.warning(f"Unknown strategy type {strategy_type}, falling back to local")
                 self.execution_strategy = strategy_configs['local']()
                 
-            logger.info(f"Configured execution strategy: {strategy_type}")
+            if not AnalysisEngine._strategy_logged:
+                logger.info(f"Configured execution strategy: {strategy_type}")
+                AnalysisEngine._strategy_logged = True
             
         except Exception as e:
             logger.error(f"Failed to configure execution strategy: {e}")

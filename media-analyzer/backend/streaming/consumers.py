@@ -21,7 +21,7 @@ class StreamAnalysisConsumer(AsyncWebsocketConsumer):
         )
         
         await self.accept()
-        logger.info(f"WebSocket connected for stream {self.stream_id}")
+        logger.info(f"WebSocket connected for stream {self.stream_id} - listening to group: {self.room_group_name}")
         
         # Send recent analysis results
         await self.send_recent_analysis()

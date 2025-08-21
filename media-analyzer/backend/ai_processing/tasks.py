@@ -85,8 +85,10 @@ def analyze_logo_detection(self, stream_id, segment_path):
         
         # Send results via WebSocket if detections found
         if detections:
+            websocket_group = f"stream_{stream_id}"
+            logger.info(f"Sending websocket update to group: {websocket_group}")
             async_to_sync(channel_layer.group_send)(
-                f"stream_{stream_id}",
+                websocket_group,
                 {
                     "type": "analysis_update",
                     "analysis": analysis.to_dict()
@@ -98,12 +100,12 @@ def analyze_logo_detection(self, stream_id, segment_path):
             queue_item.status = 'completed'
             queue_item.save()
         
-        if detections:
-            brands_found = [d['label'] for d in detections]
-            logger.info(f"Logo detection: {len(detections)} detections found - brands: {', '.join(brands_found)}")
-        else:
-            logger.debug(f"Logo detection: no detections found")
-        return {"detections": len(detections), "analysis_id": str(analysis.id)}
+        result = {
+            "detections": len(detections), 
+            "analysis_id": str(analysis.id),
+            "brands": [d['label'] for d in detections] if detections else []
+        }
+        return result
         
     except Exception as e:
         logger.error(f"Logo detection failed for {segment_path}: {e}")
