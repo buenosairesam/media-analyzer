@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim AS base
 
 WORKDIR /app
 
@@ -23,10 +23,13 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Copy source code and set ownership in one layer
 COPY --chown=appuser:appuser . .
-COPY --chown=appuser:appuser docker-entrypoint.sh /app/
 
-# Make entrypoint executable
-RUN chmod +x docker-entrypoint.sh
+# Copy entrypoint scripts
+COPY --chown=appuser:appuser entrypoint-web.sh /app/
+COPY --chown=appuser:appuser entrypoint-celery.sh /app/
+
+# Make entrypoint scripts executable
+RUN chmod +x entrypoint-web.sh entrypoint-celery.sh
 
 # Switch to non-root user
 USER appuser
@@ -34,6 +37,12 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Default command (can be overridden for celery workers)
-ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["web"]
+# Development stage
+FROM base AS development
+ENV DJANGO_DEBUG=1
+CMD ["./entrypoint-web.sh"]
+
+# Production stage  
+FROM base AS production
+ENV DJANGO_DEBUG=0
+CMD ["./entrypoint-web.sh"]

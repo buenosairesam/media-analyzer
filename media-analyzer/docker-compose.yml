@@ -1,7 +1,9 @@
 services:
   # Django Backend with ASGI (WebSocket support)
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      target: development
     ports:
       - "8000:8000"
     volumes:
@@ -13,33 +15,28 @@ services:
       - DB_NAME=media_analyzer
       - DB_USER=media_user
       - DB_PASSWORD=media_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - HLS_BASE_URL=http://nginx-rtmp:8081
+      - HLS_ENDPOINT_PATH=/
+      - MEDIA_ROOT=/app/media
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - TRANSFORMERS_CACHE=/tmp/huggingface
+      - HF_HOME=/tmp/huggingface  
+      - TORCH_HOME=/tmp/torch
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
-    command: ./docker-entrypoint.sh web
+    command: ./entrypoint-web.sh
 
-  # Django Migrations (run manually)
-  migrate:
-    build: ./backend
-    volumes:
-      - ./backend:/app
-    environment:
-      - DEBUG=1
-      - DB_HOST=postgres
-      - DB_NAME=media_analyzer
-      - DB_USER=media_user
-      - DB_PASSWORD=media_pass
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: ./docker-entrypoint.sh migrate
-    profiles: ["tools"]  # Only runs when explicitly called
 
   # Celery Worker - Logo Detection Queue
   celery-logo:
-    build: ./backend
+    build:
+      context: ./backend
+      target: development
     volumes:
       - ./backend:/app
       - ./media:/app/media
@@ -49,35 +46,46 @@ services:
       - DB_NAME=media_analyzer
       - DB_USER=media_user
       - DB_PASSWORD=media_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - TRANSFORMERS_CACHE=/tmp/huggingface
+      - HF_HOME=/tmp/huggingface  
+      - TORCH_HOME=/tmp/torch
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
-    command: ./docker-entrypoint.sh celery-worker --queues=logo_detection --hostname=logo-worker@%h
+    command: ./entrypoint-celery.sh --queues=logo_detection --hostname=logo-worker@%h
 
   # Celery Worker - Visual Analysis Queue  
-  celery-visual:
-    build: ./backend
-    volumes:
-      - ./backend:/app
-      - ./media:/app/media
-    environment:
-      - DEBUG=1
-      - DB_HOST=postgres
-      - DB_NAME=media_analyzer
-      - DB_USER=media_user
-      - DB_PASSWORD=media_pass
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    command: ./docker-entrypoint.sh celery-worker --queues=visual_analysis --hostname=visual-worker@%h
+  # celery-visual:
+  #   build:
+  #     context: ./backend
+  #     target: development
+  #   volumes:
+  #     - ./backend:/app
+  #     - ./media:/app/media
+  #   environment:
+  #     - DEBUG=1
+  #     - DB_HOST=postgres
+  #     - DB_NAME=media_analyzer
+  #     - DB_USER=media_user
+  #     - DB_PASSWORD=media_pass
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_started
+  #   command: ./entrypoint-celery.sh --queues=visual_analysis --hostname=visual-worker@%h
 
   # Celery Worker - Default Queue
   celery-default:
-    build: ./backend
+    build:
+      context: ./backend
+      target: development
     volumes:
       - ./backend:/app
       - ./media:/app/media
@@ -87,25 +95,22 @@ services:
       - DB_NAME=media_analyzer
       - DB_USER=media_user
       - DB_PASSWORD=media_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
-    command: ./docker-entrypoint.sh celery-worker --queues=default,config_management --hostname=default-worker@%h
+    command: ./entrypoint-celery.sh --queues=default,config_management --hostname=default-worker@%h
 
-  # Angular Frontend (Development mode)
+  # Angular Frontend with NGINX (unified approach)
   frontend:
     build:
       context: ./frontend
-      target: development  # Use development stage
+      target: development  # Use development stage with NGINX
     ports:
-      - "4200:4200"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules  # Anonymous volume for node_modules
-    environment:
-      - CHOKIDAR_USEPOLLING=true  # Enable polling for hot reload
+      - "4200:80"  # Map host 4200 to container 80 (nginx)
     depends_on:
       - backend
   # PostgreSQL Database

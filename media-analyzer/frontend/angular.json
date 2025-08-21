@@ -28,6 +28,7 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
+              "src/env-config.js",
               {
                 "glob": "**/*.glsl",
                 "input": "src/app/webgl/shaders",

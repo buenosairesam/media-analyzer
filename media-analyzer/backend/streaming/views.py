@@ -106,7 +106,7 @@ def stop_stream(request, stream_id):
 def serve_hls_file(request, filename):
     """Serve HLS files with proper headers"""
     # Files are stored in project media directory  
-    media_dir = os.path.join(settings.BASE_DIR.parent.parent, 'media')
+    media_dir = settings.MEDIA_ROOT
     file_path = os.path.join(media_dir, filename)
     
     # Check if file exists

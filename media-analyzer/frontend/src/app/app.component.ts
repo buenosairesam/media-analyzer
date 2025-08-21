@@ -6,6 +6,7 @@ import { StreamViewerComponent } from './components/stream-viewer/stream-viewer.
 import { AnalysisPanelComponent } from './components/analysis-panel/analysis-panel.component';
 import { AnalysisService } from './services/analysis.service';
 import { DetectionResult, VisualAnalysis, Analysis } from './models/analysis';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -45,10 +46,14 @@ export class AppComponent implements OnInit, OnDestroy {
 
   onStreamSelected(streamUrl: string) {
     console.log('App received stream URL:', streamUrl);
-    this.selectedStreamUrl = streamUrl;
     
-    // Extract stream ID from URL: /streaming/hls/43606ec7-786c-4f7d-acf3-95981f9e5ebe.m3u8
-    const streamIdMatch = streamUrl.match(/hls\/([0-9a-f-]+)\.m3u8/);
+    // Convert backend URL to browser-accessible URL using environment config
+    const browserUrl = streamUrl.replace(/^http:\/\/[^\/]+/, environment.hlsBaseUrl);
+    this.selectedStreamUrl = browserUrl;
+    console.log('Converted to browser URL:', browserUrl);
+    
+    // Extract stream ID from filename: 476c0bd7-d037-4b6c-a29d-0773c19a76c5.m3u8
+    const streamIdMatch = streamUrl.match(/([0-9a-f-]+)\.m3u8/);
     if (streamIdMatch) {
       this.currentStreamId = streamIdMatch[1];
       console.log('Extracted stream ID:', this.currentStreamId);

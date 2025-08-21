@@ -716,3 +716,123 @@ Logo detection working end-to-end in production-ready K8s setup
 
 - non free GCP services should use local k8s services that are preferably easy switchable
 - dont add things to gitignore that you don't know if they'll ever be there, just add what's needed as we go
+
+
+
+
+
+docker check up
+
+Here’s a fast “what changed → what to do” map so you don’t nuke/prune on every edit.
+
+# Quick map
+
+| You changed…                                                                                                   | Do this (fastest first)                                                                         | Notes / good defaults                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **App code** (source files)                                                                                    | Nothing if you have live‑reload. Otherwise `docker compose restart <svc>`                       | Use bind mounts + a dev runner: Node `nodemon`, Python `uvicorn --reload`/Flask debug, Django `runserver`, Go `air`/`reflex`. |
+| **Runtime config** inside container (env var values, flags)                                                    | `docker compose up -d --no-deps <svc>` (recreate) or `restart`                                  | If the env is in `.env` or `compose.yml` `environment:`, a restart/recreate is enough.                                        |
+| **Config files read at startup** (e.g., `nginx.conf`, app config YAML)                                         | `docker compose up -d --no-deps <svc>`                                                          | Bind-mount the config so you can `restart` instead of `rebuild`.                                                              |
+| **Dependency lockfile** (`package-lock.json`, `poetry.lock`, `requirements.txt`, `go.mod/sum`, `Gemfile.lock`) | `docker compose build <svc>` then `up -d --no-deps <svc>`                                       | Cache layers by copying lockfile before `COPY .`. See Dockerfile pattern below.                                               |
+| **Dockerfile** (but not the base image)                                                                        | `docker compose build <svc>` then `up -d --no-deps <svc>`                                       | BuildKit keeps layer cache; only changed layers rebuild.                                                                      |
+| **Base image tag** (e.g., `FROM node:20-bullseye` -> new tag or want latest security updates)                  | `docker compose build --pull <svc>` then `up -d --no-deps <svc>`                                | `--pull` refreshes the base. Use pinned tags in prod.                                                                         |
+| **Build args** (`ARG VAR=...` used in Dockerfile)                                                              | `docker compose build --no-cache --build-arg VAR=... <svc>` (if the arg affects earlier layers) | If the arg only affects late layers, drop `--no-cache`.                                                                       |
+| **Multi-service libraries** (shared package used by multiple services)                                         | Rebuild every consumer: `docker compose build svc1 svc2` then `up -d --no-deps svc1 svc2`       | Consider a shared base image stage to centralize caches.                                                                      |
+| **compose.yml** service definition (ports, volumes, healthchecks)                                              | `docker compose up -d`                                                                          | Compose detects what must be recreated.                                                                                       |
+| **External dependency** (DB schema, migrations)                                                                | Run migration container/task; usually no rebuild                                                | Keep DB in a **named volume** so rebuilds don’t wipe data.                                                                    |
+| **Static assets** (built by a toolchain)                                                                       | If built outside: restart only. If built inside: `build` that web service                       | Prefer building in a separate “builder” stage with a cache.                                                                   |
+| **Secrets** (files mounted via `secrets:` or env injected at runtime)                                          | `restart` the service                                                                           | Don’t bake secrets into images → no rebuilds needed.                                                                          |
+| **Data in bind/named volumes**                                                                                 | Nothing (data persists)                                                                         | Avoid pruning volumes unless you *want* to reset state.                                                                       |
+
+# Minimal dev patterns that avoid rebuilds
+
+**Dockerfile (Node/Python example)**
+
+```dockerfile
+# syntax=docker/dockerfile:1.7
+FROM node:20 AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+FROM node:20 AS dev
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+# Copy only what’s needed for runtime; source comes from a bind mount in dev
+COPY package*.json ./
+CMD ["npm","run","dev"]  # e.g., vite/next with HMR
+```
+
+For Python, copy `pyproject.toml`/`requirements.txt` to a deps layer first, install, then bind‑mount your app code.
+
+**docker-compose.yml (dev)**
+
+```yaml
+services:
+  web:
+    build:
+      context: .
+      target: dev
+    volumes:
+      - .:/app:cached
+    env_file: .env
+    ports:
+      - "3000:3000"
+    command: npm run dev
+```
+
+# Everyday command palette
+
+* Restart a single service (pick up env/config):
+  `docker compose restart <svc>`
+* Recreate a service without touching deps (uses existing image):
+  `docker compose up -d --no-deps <svc>`
+* Rebuild only what changed (then recreate):
+  `docker compose build <svc> && docker compose up -d --no-deps <svc>`
+* Rebuild with fresh base image:
+  `docker compose build --pull <svc> && docker compose up -d --no-deps <svc>`
+* Tail logs:
+  `docker compose logs -f <svc>`
+* Exec a shell:
+  `docker compose exec <svc> sh` (or `bash`)
+* Clean **containers & images from dangling builds** (keep volumes!):
+  `docker image prune -f && docker container prune -f`
+* Clean everything **except named volumes**:
+  `docker system prune -a`  ← only when truly needed.
+
+# Tips that keep you off the prune button
+
+1. **Bind-mount code in dev** + a live‑reload command, so edits don’t require rebuilds.
+2. **Layer your Dockerfile** so deps install before copying the whole source:
+
+   * `COPY package*.json .` → install → **then** `COPY src .`
+3. **Use BuildKit caches** for heavy steps (node, pip, apt):
+
+   * `RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt`
+   * `RUN --mount=type=cache,target=/root/.npm npm ci`
+4. **Pin base images** (e.g., `node:20-bullseye`) and consciously use `--pull` when you want updates.
+5. **Separate build and runtime** (multi‑stage). Artifacts copied forward make rebuilds smaller.
+6. **Keep data in named volumes**; never in the image. Pruning images won’t touch your DB/files.
+7. **.dockerignore** aggressively: exclude `node_modules` (if you install in image), `.git`, build outputs, tmp.
+8. **Compose profiles** for optional services (e.g., `profiles: ["dev"]`) so you don’t restart the world.
+
+# Tiny Makefile (muscle memory)
+
+```make
+up:      ## start everything
+    docker compose up -d
+
+logs:    ## tail logs from app
+    docker compose logs -f web
+
+re:      ## rebuild + recreate app only
+    docker compose build web && docker compose up -d --no-deps web
+
+restart: ## restart app only
+    docker compose restart web
+```
+
+If you tell me your stack (language/framework + how you install deps), I’ll tailor the Dockerfile and compose snippets so most edits are “save → live‑reload,” lockfile changes are “build web,” and prunes are basically never.
+
+
+
+it's docker compose not docker-compose

@@ -21,7 +21,7 @@ spec:
         image: media-analyzer-frontend:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 4200
+        - containerPort: 80
           name: http
         resources:
           requests:
@@ -33,12 +33,12 @@ spec:
         livenessProbe:
           httpGet:
             path: /
-            port: 4200
+            port: 80
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /
-            port: 4200
+            port: 80
           initialDelaySeconds: 5
           periodSeconds: 5
