@@ -49,7 +49,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.analysisService.detections$
       .pipe(takeUntil(this.destroy$))
       .subscribe(detections => {
-        console.log('AppComponent - received detections:', detections.length, detections);
         this.currentDetections = detections;
       });
     

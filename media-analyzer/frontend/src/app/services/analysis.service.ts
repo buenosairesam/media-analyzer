@@ -52,20 +52,14 @@ export class AnalysisService {
   private handleAnalysisUpdate(analysis: Analysis) {
     // Only process analysis if we have an active session
     if (!this.currentSessionId) {
-      console.log('Ignoring analysis - no active session');
       return;
     }
     
     // Filter by session ID - only process analysis for current session
     if (analysis.session_id && analysis.session_id !== this.currentSessionId) {
-      console.log('Ignoring analysis - different session:', {
-        received: analysis.session_id,
-        current: this.currentSessionId
-      });
       return;
     }
     
-    console.log('Processing analysis update for session:', this.currentSessionId, analysis);
     
     // Update recent analyses list
     const current = this.recentAnalyses.value;
@@ -81,12 +75,6 @@ export class AnalysisService {
       this.currentVisual.next(analysis.visual);
     }
     
-    console.log('Analysis update processed:', {
-      sessionId: this.currentSessionId,
-      detections: detections.length,
-      visual: !!analysis.visual,
-      timestamp: analysis.timestamp
-    });
   }
 
   getCurrentDetections(): DetectionResult[] {

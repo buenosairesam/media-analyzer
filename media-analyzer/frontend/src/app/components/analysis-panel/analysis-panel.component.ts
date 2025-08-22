@@ -15,11 +15,6 @@ export class AnalysisPanelComponent implements OnChanges {
   @Input() currentVisual?: VisualAnalysis;
 
   ngOnChanges() {
-    console.log('AnalysisPanel - detections changed:', this.currentDetections.length);
-    console.log('AnalysisPanel - visual changed:', !!this.currentVisual);
-    if (this.currentDetections.length > 0) {
-      console.log('AnalysisPanel - detection details:', this.currentDetections);
-    }
   }
 
   getDetectionsByType(type: string): DetectionResult[] {

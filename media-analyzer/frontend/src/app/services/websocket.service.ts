@@ -35,18 +35,14 @@ export class WebsocketService {
     this.socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('🔔 WebSocket message received:', data);
         
         if (data.type === 'analysis_update') {
-          console.log('📊 Analysis update - detections:', data.analysis.detections?.length || 0);
           this.analysisSubject.next(data.analysis);
         } else if (data.type === 'recent_analysis') {
-          console.log('📋 Recent analysis batch:', data.analyses?.length || 0);
           data.analyses.forEach((analysis: Analysis) => {
             this.analysisSubject.next(analysis);
           });
         } else if (data.type === 'pong') {
-          console.log('🏓 Pong received');
         } else {
           console.log('❓ Unknown message type:', data.type);
         }
@@ -77,10 +73,8 @@ export class WebsocketService {
 
   send(message: any) {
     if (this.socket?.readyState === WebSocket.OPEN) {
-      console.log('Sending WebSocket message:', message);
       this.socket.send(JSON.stringify(message));
     } else {
-      console.log('Cannot send message - WebSocket not open:', this.socket?.readyState);
     }
   }
 
