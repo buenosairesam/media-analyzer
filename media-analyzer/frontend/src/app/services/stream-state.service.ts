@@ -143,6 +143,19 @@ export class StreamStateService {
     }
   }
 
+  async deleteStream(streamId: number): Promise<void> {
+    this.updateState({ isLoading: true, error: null });
+    
+    try {
+      await this.streamService.deleteStream(streamId).toPromise();
+      await this.loadAvailableStreams();
+    } catch (error: any) {
+      this.handleError(error);
+    } finally {
+      this.updateState({ isLoading: false });
+    }
+  }
+
   // Session Management
   private createSession(streamKey: string, hlsUrl: string, sourceType: 'webcam' | 'rtmp'): StreamSession {
     const session: StreamSession = {

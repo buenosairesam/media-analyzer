@@ -268,3 +268,28 @@ def start_webcam_stream(request):
     except Exception as e:
         logger.error(f"Error starting webcam stream: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_stream(request, stream_id):
+    """Delete a stream (only if inactive)"""
+    try:
+        stream = get_object_or_404(VideoStream, id=stream_id)
+        
+        # Cannot delete active streams
+        if stream.status == StreamStatus.ACTIVE:
+            return JsonResponse({
+                'error': f'Cannot delete active stream: {stream.name}. Stop it first.'
+            }, status=400)
+        
+        # Delete the stream
+        stream_name = stream.name
+        stream.delete()
+        
+        logger.info(f"Deleted stream: {stream_name} (ID: {stream_id})")
+        return JsonResponse({'message': f'Stream "{stream_name}" deleted successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting stream {stream_id}: {e}")
+        return JsonResponse({'error': str(e)}, status=500)

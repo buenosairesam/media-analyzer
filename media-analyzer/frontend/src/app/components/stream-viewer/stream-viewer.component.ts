@@ -16,6 +16,7 @@ export class StreamViewerComponent implements AfterViewInit, OnDestroy, OnChange
   @Input() detections: DetectionResult[] = [];
   
   showOverlay = true;
+  isPlaying = false;
   private hls?: Hls;
   private ctx?: CanvasRenderingContext2D;
 
@@ -24,6 +25,12 @@ export class StreamViewerComponent implements AfterViewInit, OnDestroy, OnChange
     if (this.streamUrl) {
       this.loadStream(this.streamUrl);
     }
+    
+    // Set up video event listeners
+    const video = this.videoElement.nativeElement;
+    video.addEventListener('play', () => this.isPlaying = true);
+    video.addEventListener('pause', () => this.isPlaying = false);
+    video.addEventListener('ended', () => this.isPlaying = false);
   }
   
   ngOnChanges(changes: SimpleChanges) {
@@ -64,6 +71,8 @@ export class StreamViewerComponent implements AfterViewInit, OnDestroy, OnChange
       
       this.hls.on(Hls.Events.MANIFEST_LOADED, () => {
         console.log('HLS manifest loaded');
+        // Autoplay when manifest is loaded
+        this.autoPlay();
       });
       
       this.hls.on(Hls.Events.ERROR, (event, data) => {
@@ -75,8 +84,29 @@ export class StreamViewerComponent implements AfterViewInit, OnDestroy, OnChange
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Native HLS support (Safari)
       video.src = url;
+      video.addEventListener('loadedmetadata', () => this.autoPlay());
     } else {
       console.error('HLS not supported');
+    }
+  }
+
+  private async autoPlay() {
+    try {
+      const video = this.videoElement.nativeElement;
+      video.muted = true; // Required for autoplay in most browsers
+      await video.play();
+      console.log('Video autoplay started');
+    } catch (error) {
+      console.log('Autoplay failed, user interaction required:', error);
+    }
+  }
+
+  async togglePlayPause() {
+    const video = this.videoElement.nativeElement;
+    if (video.paused) {
+      await this.play();
+    } else {
+      this.pause();
     }
   }
 

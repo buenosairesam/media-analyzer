@@ -7,8 +7,11 @@
   </div>
   
   <div class="controls">
-    <button (click)="play()" class="btn">Play</button>
-    <button (click)="pause()" class="btn">Pause</button>
-    <button (click)="toggleOverlay()" class="btn">{{showOverlay ? 'Hide' : 'Show'}} Detections</button>
+    <button (click)="togglePlayPause()" class="btn play-pause">
+      {{ isPlaying ? 'Pause' : 'Play' }}
+    </button>
+    <button (click)="toggleOverlay()" class="btn">
+      {{ showOverlay ? 'Hide Detections' : 'Show Detections' }}
+    </button>
   </div>
 </div>

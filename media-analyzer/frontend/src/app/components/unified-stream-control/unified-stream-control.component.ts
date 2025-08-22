@@ -101,14 +101,14 @@ import { Stream } from '../../models/stream';
         </div>
       </div>
 
-      <!-- RTMP Management (collapsible section) -->
-      <div class="rtmp-management">
-        <div class="section-header" (click)="toggleRtmpManagement()">
-          <h4>RTMP Management</h4>
-          <span class="toggle-icon">{{ showRtmpManagement ? '−' : '+' }}</span>
+      <!-- Source Manager (collapsible section) -->
+      <div class="source-management">
+        <div class="section-header" (click)="toggleSourceManagement()">
+          <h4>Source Manager</h4>
+          <span class="toggle-icon">{{ showSourceManagement ? '−' : '+' }}</span>
         </div>
         
-        <div class="management-content" *ngIf="showRtmpManagement">
+        <div class="management-content" *ngIf="showSourceManagement">
           <!-- Create New RTMP Stream -->
           <div class="create-stream">
             <input 
@@ -121,23 +121,60 @@ import { Stream } from '../../models/stream';
               class="create-button" 
               (click)="createRtmpStream()" 
               [disabled]="!newStreamName || streamState.isLoading">
-              Create
+              Create RTMP Source
             </button>
           </div>
 
-          <!-- Available RTMP Streams -->
-          <div class="available-streams" *ngIf="rtmpStreams.length > 0">
-            <div class="stream-list">
+          <!-- Available Sources -->
+          <div class="available-sources" *ngIf="allStreams.length > 0">
+            <h5>Available Sources</h5>
+            <div class="source-list">
               <div 
-                class="stream-item" 
-                *ngFor="let stream of rtmpStreams">
-                <div class="stream-info">
-                  <div class="stream-name">{{ stream.name }}</div>
-                  <div class="stream-key">{{ stream.stream_key }}</div>
-                  <div class="stream-status" [class]="stream.status">{{ stream.status }}</div>
+                class="source-item" 
+                *ngFor="let stream of allStreams"
+                [class.active]="stream.status === 'active'">
+                <div class="source-header">
+                  <div class="source-type-badge" [class]="stream.source_type">
+                    {{ stream.source_type.toUpperCase() }}
+                  </div>
+                  <div class="source-actions">
+                    <button 
+                      class="delete-button"
+                      (click)="deleteStream(stream)"
+                      [disabled]="streamState.isLoading || stream.status === 'active'"
+                      title="Delete source">
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+                <div class="source-info">
+                  <div class="info-row">
+                    <span class="label">Name:</span>
+                    <span class="value">{{ stream.name }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Stream Key:</span>
+                    <span class="value mono">{{ stream.stream_key }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Database ID:</span>
+                    <span class="value">{{ stream.id }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">Status:</span>
+                    <span class="status-badge" [class]="stream.status">{{ stream.status }}</span>
+                  </div>
+                  <div class="info-row" *ngIf="stream.hls_playlist_url">
+                    <span class="label">HLS URL:</span>
+                    <span class="value mono small">{{ stream.hls_playlist_url }}</span>
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          <div class="no-sources" *ngIf="allStreams.length === 0">
+            <p>No sources available. Create an RTMP source to get started.</p>
           </div>
         </div>
       </div>
@@ -333,8 +370,8 @@ import { Stream } from '../../models/stream';
       font-size: 14px;
     }
 
-    /* RTMP Management Section */
-    .rtmp-management {
+    /* Source Management Section */
+    .source-management {
       border: 1px solid #dee2e6;
       border-radius: 6px;
       overflow: hidden;
@@ -399,47 +436,145 @@ import { Stream } from '../../models/stream';
       background: #545b62;
     }
 
-    .stream-list {
-      margin-top: 10px;
+    /* Source List Styles */
+    .source-list {
+      margin-top: 15px;
     }
 
-    .stream-item {
-      padding: 10px;
+    .source-item {
       border: 1px solid #dee2e6;
-      border-radius: 4px;
-      margin-bottom: 8px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      overflow: hidden;
     }
 
-    .stream-info .stream-name {
-      font-weight: 600;
-      color: #343a40;
-      margin-bottom: 4px;
+    .source-item.active {
+      border-color: #28a745;
+      background: #f8fff9;
     }
 
-    .stream-info .stream-key {
-      font-family: monospace;
-      font-size: 12px;
-      color: #6c757d;
-      margin-bottom: 4px;
+    .source-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
     }
 
-    .stream-status {
+    .source-type-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
       font-size: 11px;
-      font-weight: 500;
+      font-weight: 600;
       text-transform: uppercase;
+    }
+
+    .source-type-badge.webcam {
+      background: #007bff;
+      color: white;
+    }
+
+    .source-type-badge.rtmp {
+      background: #6f42c1;
+      color: white;
+    }
+
+    .delete-button {
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+    }
+
+    .delete-button:hover:not(:disabled) {
+      background: #c82333;
+    }
+
+    .delete-button:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .source-info {
+      padding: 15px;
+    }
+
+    .info-row {
+      display: flex;
+      margin-bottom: 8px;
+      align-items: flex-start;
+    }
+
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .info-row .label {
+      font-weight: 600;
+      color: #495057;
+      width: 100px;
+      flex-shrink: 0;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .info-row .value {
+      color: #212529;
+      flex: 1;
+      word-break: break-all;
+    }
+
+    .info-row .value.mono {
+      font-family: 'Courier New', monospace;
+      background: #f8f9fa;
       padding: 2px 6px;
       border-radius: 3px;
-      display: inline-block;
+      font-size: 11px;
     }
 
-    .stream-status.active {
+    .info-row .value.small {
+      font-size: 11px;
+    }
+
+    .status-badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-badge.active {
       background: #d4edda;
       color: #155724;
     }
 
-    .stream-status.inactive {
+    .status-badge.inactive {
       background: #f8d7da;
       color: #721c24;
+    }
+
+    .no-sources {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6c757d;
+      font-style: italic;
+    }
+
+    .no-sources p {
+      margin: 0;
+    }
+
+    .available-sources h5 {
+      margin: 0 0 15px 0;
+      color: #495057;
+      font-size: 14px;
+      font-weight: 600;
     }
 
     /* Loading Overlay */
@@ -483,7 +618,7 @@ export class UnifiedStreamControlComponent implements OnInit, OnDestroy {
   selectedSourceType: 'webcam' | 'rtmp' = 'webcam';
   selectedRtmpStreamKey = '';
   newStreamName = '';
-  showRtmpManagement = false;
+  showSourceManagement = false;
   
   private destroy$ = new Subject<void>();
 
@@ -521,8 +656,27 @@ export class UnifiedStreamControlComponent implements OnInit, OnDestroy {
     this.newStreamName = '';
   }
 
-  toggleRtmpManagement() {
-    this.showRtmpManagement = !this.showRtmpManagement;
+  toggleSourceManagement() {
+    this.showSourceManagement = !this.showSourceManagement;
+  }
+
+  async deleteStream(stream: Stream) {
+    if (stream.status === 'active') {
+      alert('Cannot delete an active stream. Stop it first.');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete "${stream.name}"?`)) {
+      return;
+    }
+
+    try {
+      // Call the backend API to delete the stream
+      await this.streamStateService.deleteStream(stream.id);
+    } catch (error) {
+      console.error('Failed to delete stream:', error);
+      alert('Failed to delete stream. Please try again.');
+    }
   }
 
   canStart(): boolean {
@@ -540,6 +694,10 @@ export class UnifiedStreamControlComponent implements OnInit, OnDestroy {
 
   get rtmpStreams(): Stream[] {
     return this.streamState.availableStreams.filter(stream => stream.source_type === 'rtmp');
+  }
+
+  get allStreams(): Stream[] {
+    return this.streamState.availableStreams;
   }
 
   get isStreaming(): boolean {

@@ -1,0 +1,17 @@
+{
+  "name": "media-analyzer",
+  "version": "1.0.0",
+  "description": "Real-time video analysis platform",
+  "scripts": {
+    "dev:backend": "./start-backend-only.sh",
+    "dev:frontend": "./start-frontend-dev.sh", 
+    "dev:full": "docker compose up -d",
+    "stop": "docker compose down",
+    "logs": "docker compose logs -f",
+    "build": "docker compose build",
+    "clean": "docker compose down -v --remove-orphans"
+  },
+  "keywords": ["video", "streaming", "ai", "analysis", "docker"],
+  "author": "Media Analyzer Team",
+  "license": "MIT"
+}
