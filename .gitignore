@@ -8,3 +8,5 @@ media/*
 !media/.gitkeep
 media-analyzer-src.tar.gz
 media-analyzer/media
+.env
+
