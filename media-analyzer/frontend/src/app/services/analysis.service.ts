@@ -32,8 +32,8 @@ export class AnalysisService {
     // Clear existing analysis data when starting new session
     this.clearAnalysis();
     
-    // Connect to WebSocket
-    this.websocketService.subscribe(streamKey);
+    // Connect to WebSocket with session ID
+    this.websocketService.subscribe(streamKey, this.currentSessionId);
     
     console.log('Connected to stream analysis:', {
       streamKey,

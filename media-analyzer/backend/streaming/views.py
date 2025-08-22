@@ -3,6 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404
 from django.conf import settings
+from django.core.cache import cache
 from .models import VideoStream, StreamStatus
 from .source_adapters import SourceAdapterFactory
 from ai_processing.processors.video_analyzer import VideoAnalyzer
@@ -140,11 +141,15 @@ def serve_hls_file(request, filename):
             logger.info(f"Parsed stream_key: {stream_key} from filename: {filename}")
             
             if stream_key:
+                # Get session ID from cache
+                session_id = cache.get(f"stream_session_{stream_key}")
+                logger.info(f"Retrieved session_id: {session_id} for stream: {stream_key}")
+                
                 # Queue for analysis
                 logger.info(f"Attempting to queue analysis for {filename}")
                 analyzer = VideoAnalyzer()
-                analyzer.queue_segment_analysis(stream_key, file_path)
-                logger.info(f"Queued segment for analysis: {filename} (stream: {stream_key})")
+                analyzer.queue_segment_analysis(stream_key, file_path, session_id)
+                logger.info(f"Queued segment for analysis: {filename} (stream: {stream_key}, session: {session_id})")
             else:
                 logger.warning(f"No stream_key extracted from {filename}")
             

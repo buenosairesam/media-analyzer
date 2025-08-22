@@ -226,7 +226,7 @@ export class StreamStateService {
   }
 
   private normalizeHlsUrl(hlsUrl: string): string {
-    // Convert backend URL to browser-accessible URL
+    // Convert backend URL to direct nginx URL via proxy
     const filename = hlsUrl.split('/').pop() || '';
     return `/streaming/${filename}`;
   }

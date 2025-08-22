@@ -50,7 +50,7 @@ class VideoAnalyzer:
         except Exception as e:
             logger.error(f"Error setting up providers: {e}")
     
-    def queue_segment_analysis(self, stream_key, segment_path):
+    def queue_segment_analysis(self, stream_key, segment_path, session_id=None):
         """Queue video segment for analysis"""
         try:
             # Check if already queued
@@ -73,7 +73,7 @@ class VideoAnalyzer:
             )
             
             # Trigger async processing
-            process_video_segment.delay(stream_key, segment_path)
+            process_video_segment.delay(stream_key, segment_path, session_id)
             
             logger.info(f"Queued segment for analysis: {segment_path}")
             return True

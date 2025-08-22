@@ -49,17 +49,12 @@ import { Stream } from '../../models/stream';
           </label>
         </div>
 
-        <!-- RTMP Stream Selection (only when RTMP is selected) -->
-        <div class="rtmp-selection" *ngIf="selectedSourceType === 'rtmp'">
-          <select 
-            [(ngModel)]="selectedRtmpStreamKey" 
-            class="rtmp-select"
-            [disabled]="streamState.isLoading || isStreaming">
-            <option value="">Select RTMP Stream</option>
-            <option *ngFor="let stream of rtmpStreams" [value]="stream.stream_key">
-              {{ stream.name }} ({{ stream.stream_key }})
-            </option>
-          </select>
+        <!-- Auto-select first available RTMP stream when RTMP is selected -->
+        <div class="rtmp-info" *ngIf="selectedSourceType === 'rtmp' && rtmpStreams.length > 0">
+          <span class="stream-info">Stream: {{ rtmpStreams[0].stream_key }}</span>
+        </div>
+        <div class="rtmp-info" *ngIf="selectedSourceType === 'rtmp' && rtmpStreams.length === 0">
+          <span class="no-streams">No RTMP streams available</span>
         </div>
 
         <!-- Start/Stop Button -->
@@ -101,29 +96,14 @@ import { Stream } from '../../models/stream';
         </div>
       </div>
 
-      <!-- Source Manager (collapsible section) -->
+      <!-- Stream Manager (collapsible section) -->
       <div class="source-management">
         <div class="section-header" (click)="toggleSourceManagement()">
-          <h4>Source Manager</h4>
+          <h4>Stream Manager</h4>
           <span class="toggle-icon">{{ showSourceManagement ? '−' : '+' }}</span>
         </div>
         
         <div class="management-content" *ngIf="showSourceManagement">
-          <!-- Create New RTMP Stream -->
-          <div class="create-stream">
-            <input 
-              type="text" 
-              [(ngModel)]="newStreamName" 
-              placeholder="Enter stream name"
-              class="stream-name-input"
-              [disabled]="streamState.isLoading">
-            <button 
-              class="create-button" 
-              (click)="createRtmpStream()" 
-              [disabled]="!newStreamName || streamState.isLoading">
-              Create RTMP Source
-            </button>
-          </div>
 
           <!-- Available Sources -->
           <div class="available-sources" *ngIf="allStreams.length > 0">
@@ -149,16 +129,8 @@ import { Stream } from '../../models/stream';
                 </div>
                 <div class="source-info">
                   <div class="info-row">
-                    <span class="label">Name:</span>
-                    <span class="value">{{ stream.name }}</span>
-                  </div>
-                  <div class="info-row">
                     <span class="label">Stream Key:</span>
                     <span class="value mono">{{ stream.stream_key }}</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="label">Database ID:</span>
-                    <span class="value">{{ stream.id }}</span>
                   </div>
                   <div class="info-row">
                     <span class="label">Status:</span>
@@ -174,7 +146,7 @@ import { Stream } from '../../models/stream';
           </div>
 
           <div class="no-sources" *ngIf="allStreams.length === 0">
-            <p>No sources available. Create an RTMP source to get started.</p>
+            <p>No sources available.</p>
           </div>
         </div>
       </div>
@@ -276,17 +248,24 @@ import { Stream } from '../../models/stream';
       margin: 0;
     }
 
-    .rtmp-selection {
+    .rtmp-info {
       margin-bottom: 15px;
-    }
-
-    .rtmp-select {
-      width: 100%;
       padding: 8px 12px;
-      border: 1px solid #ced4da;
       border-radius: 4px;
       font-size: 14px;
-      background: white;
+    }
+
+    .rtmp-info .stream-info {
+      color: #155724;
+      background: #d4edda;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+
+    .rtmp-info .no-streams {
+      color: #721c24;
+      font-style: italic;
     }
 
     .action-buttons {
@@ -407,34 +386,6 @@ import { Stream } from '../../models/stream';
       background: white;
     }
 
-    .create-stream {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-
-    .stream-name-input {
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid #ced4da;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
-    .create-button {
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      font-weight: 500;
-      cursor: pointer;
-      background: #6c757d;
-      color: white;
-      transition: background-color 0.2s;
-    }
-
-    .create-button:hover:not(:disabled) {
-      background: #545b62;
-    }
 
     /* Source List Styles */
     .source-list {
@@ -616,8 +567,6 @@ export class UnifiedStreamControlComponent implements OnInit, OnDestroy {
   };
 
   selectedSourceType: 'webcam' | 'rtmp' = 'webcam';
-  selectedRtmpStreamKey = '';
-  newStreamName = '';
   showSourceManagement = false;
   
   private destroy$ = new Subject<void>();
@@ -640,8 +589,8 @@ export class UnifiedStreamControlComponent implements OnInit, OnDestroy {
   async startSelectedSource() {
     if (this.selectedSourceType === 'webcam') {
       await this.streamStateService.startWebcamStream();
-    } else if (this.selectedSourceType === 'rtmp' && this.selectedRtmpStreamKey) {
-      await this.streamStateService.startRtmpStream(this.selectedRtmpStreamKey);
+    } else if (this.selectedSourceType === 'rtmp' && this.rtmpStreams.length > 0) {
+      await this.streamStateService.startRtmpStream(this.rtmpStreams[0].stream_key);
     }
   }
 
@@ -649,12 +598,6 @@ export class UnifiedStreamControlComponent implements OnInit, OnDestroy {
     await this.streamStateService.stopCurrentStream();
   }
 
-  async createRtmpStream() {
-    if (!this.newStreamName.trim()) return;
-    
-    await this.streamStateService.createRtmpStream(this.newStreamName.trim());
-    this.newStreamName = '';
-  }
 
   toggleSourceManagement() {
     this.showSourceManagement = !this.showSourceManagement;
@@ -683,7 +626,7 @@ export class UnifiedStreamControlComponent implements OnInit, OnDestroy {
     if (this.selectedSourceType === 'webcam') {
       return true;
     }
-    return this.selectedSourceType === 'rtmp' && !!this.selectedRtmpStreamKey;
+    return this.selectedSourceType === 'rtmp' && this.rtmpStreams.length > 0;
   }
 
   clearError() {

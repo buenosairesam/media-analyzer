@@ -38,6 +38,7 @@ class Brand(models.Model):
 class VideoAnalysis(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     stream_key = models.CharField(max_length=100)  # Use stream_key instead of stream_id
+    session_id = models.CharField(max_length=100, null=True, blank=True)  # Frontend session tracking
     segment_path = models.CharField(max_length=500)
     timestamp = models.DateTimeField(auto_now_add=True)
     processing_time = models.FloatField(null=True)

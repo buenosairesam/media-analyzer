@@ -9,7 +9,10 @@
     "target": "http://localhost:8081",
     "secure": false,
     "logLevel": "debug",
-    "changeOrigin": true
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/streaming": ""
+    }
   },
   "/ws/**": {
     "target": "http://localhost:8000",

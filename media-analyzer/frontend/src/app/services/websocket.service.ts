@@ -82,10 +82,14 @@ export class WebsocketService {
     });
   }
   
-  subscribe(streamId: string) {
+  subscribe(streamId: string, sessionId?: string) {
     this.currentStreamId = streamId;
     this.connect();
-    this.send({ type: 'subscribe', stream_id: streamId });
+    const message: any = { type: 'subscribe', stream_id: streamId };
+    if (sessionId) {
+      message.session_id = sessionId;
+    }
+    this.send(message);
   }
   
   unsubscribe() {
