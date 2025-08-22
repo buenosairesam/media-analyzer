@@ -4,6 +4,9 @@ from pathlib import Path
 from django.conf import settings
 from .models import VideoStream, StreamStatus
 from .ffmpeg_handler import ffmpeg_handler
+import threading
+import os
+import signal
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +63,14 @@ class RTMPSourceAdapter(VideoSourceAdapter):
             
             # Start FFmpeg conversion
             self.process = ffmpeg_handler.rtmp_to_hls(rtmp_url, playlist_path)
-            
+            # Persist FFmpeg PID for stop operations
+            try:
+                pid_file = media_dir / f'{self.stream.stream_key}.pid'
+                with pid_file.open('w') as f:
+                    f.write(str(self.process.pid))
+            except Exception as e:
+                logger.error(f"RTMPSourceAdapter: Failed to write PID file: {e}")
             # HLS URL is now generated dynamically from settings
-            
             self.update_stream_status(StreamStatus.ACTIVE)
             logger.info(f"Started RTMP processing for stream {self.stream.id}")
             return True
@@ -75,15 +83,31 @@ class RTMPSourceAdapter(VideoSourceAdapter):
     def stop_processing(self) -> bool:
         try:
             self.update_stream_status(StreamStatus.STOPPING)
-            
+            media_dir = Path(settings.MEDIA_ROOT)
+            pid_file = media_dir / f'{self.stream.stream_key}.pid'
+            # Attempt to terminate in-memory process
             if self.process and self.process.poll() is None:
                 self.process.terminate()
-                self.process.wait(timeout=10)
-                
+                try:
+                    self.process.wait(timeout=10)
+                except Exception:
+                    pass
+            # Fallback: terminate by PID file
+            elif pid_file.exists():
+                try:
+                    pid = int(pid_file.read_text())
+                    os.kill(pid, signal.SIGTERM)
+                except Exception as kill_err:
+                    logger.error(f"RTMPSourceAdapter: Failed to kill PID {pid}: {kill_err}")
+            # Cleanup PID file
+            if pid_file.exists():
+                try:
+                    pid_file.unlink()
+                except Exception as unlink_err:
+                    logger.error(f"RTMPSourceAdapter: Failed to remove PID file: {unlink_err}")
             self.update_stream_status(StreamStatus.INACTIVE)
             logger.info(f"Stopped RTMP processing for stream {self.stream.id}")
             return True
-            
         except Exception as e:
             logger.error(f"Failed to stop RTMP processing: {e}")
             self.update_stream_status(StreamStatus.ERROR)
@@ -174,8 +198,17 @@ class WebcamSourceAdapter(VideoSourceAdapter):
                 raise Exception(f"Webcam initialization failed: {error_msg}")
             
             logger.info(f"FFmpeg process started successfully with PID: {self.process.pid}")
+            # Persist FFmpeg PID for stop operations
+            try:
+                pid_file = media_dir / f'{self.stream.stream_key}.pid'
+                with pid_file.open('w') as f:
+                    f.write(str(self.process.pid))
+            except Exception as e:
+                logger.error(f"WebcamSourceAdapter: Failed to write PID file: {e}")
             self.update_stream_status(StreamStatus.ACTIVE)
             logger.info(f"Started webcam processing for stream {self.stream.id}")
+            # Monitor FFmpeg process and handle unexpected termination
+            threading.Thread(target=self._monitor_webcam, daemon=True).start()
             return True
             
         except Exception as e:
@@ -187,15 +220,31 @@ class WebcamSourceAdapter(VideoSourceAdapter):
     def stop_processing(self) -> bool:
         try:
             self.update_stream_status(StreamStatus.STOPPING)
-            
+            media_dir = Path(settings.MEDIA_ROOT)
+            pid_file = media_dir / f'{self.stream.stream_key}.pid'
+            # Attempt to terminate in-memory process
             if self.process and self.process.poll() is None:
                 self.process.terminate()
-                self.process.wait(timeout=10)
-                
+                try:
+                    self.process.wait(timeout=10)
+                except Exception:
+                    pass
+            # Fallback: terminate by PID file
+            elif pid_file.exists():
+                try:
+                    pid = int(pid_file.read_text())
+                    os.kill(pid, signal.SIGTERM)
+                except Exception as kill_err:
+                    logger.error(f"WebcamSourceAdapter: Failed to kill PID {pid}: {kill_err}")
+            # Cleanup PID file
+            if pid_file.exists():
+                try:
+                    pid_file.unlink()
+                except Exception as unlink_err:
+                    logger.error(f"WebcamSourceAdapter: Failed to remove PID file: {unlink_err}")
             self.update_stream_status(StreamStatus.INACTIVE)
             logger.info(f"Stopped webcam processing for stream {self.stream.id}")
             return True
-            
         except Exception as e:
             logger.error(f"Failed to stop webcam processing: {e}")
             self.update_stream_status(StreamStatus.ERROR)
@@ -204,6 +253,20 @@ class WebcamSourceAdapter(VideoSourceAdapter):
     def get_hls_output_path(self) -> str:
         media_dir = Path(settings.MEDIA_ROOT)
         return str(media_dir / f'{self.stream.stream_key}.m3u8')
+    
+    def _monitor_webcam(self):
+        """Monitor the FFmpeg webcam process and update stream status on exit"""
+        try:
+            exit_code = self.process.wait()
+            if exit_code != 0:
+                logger.error(f"FFmpeg webcam process terminated unexpectedly with code {exit_code}")
+                new_status = StreamStatus.ERROR
+            else:
+                logger.info(f"FFmpeg webcam process terminated normally with code {exit_code}")
+                new_status = StreamStatus.INACTIVE
+            self.update_stream_status(new_status)
+        except Exception as e:
+            logger.error(f"Error monitoring FFmpeg webcam process: {e}")
 
 
 class SourceAdapterFactory:

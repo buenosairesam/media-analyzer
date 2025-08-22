@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from django.conf import settings
 from ai_processing.processors.video_analyzer import VideoAnalyzer
+from .models import VideoStream, StreamStatus
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +29,16 @@ class HLSFileWatcher:
     def process_new_segment(self, file_path):
         """Process a new HLS segment file"""
         try:
-            filename = file_path.name
-            stream_key = self.get_stream_key_from_filename(filename)
-            
-            if stream_key:
-                logger.info(f"File watcher: Processing new segment {filename} (stream: {stream_key})")
-                self.analyzer.queue_segment_analysis(stream_key, str(file_path))
-                logger.info(f"File watcher: Queued segment for analysis: {filename}")
-            else:
-                logger.warning(f"File watcher: Could not extract stream_key from {filename}")
-                
+            # Determine the active stream from the database
+            active_stream = VideoStream.objects.filter(status=StreamStatus.ACTIVE).first()
+            if not active_stream:
+                logger.warning(f"File watcher: No active stream found, skipping segment {file_path.name}")
+                return
+            stream_key = active_stream.stream_key
+            logger.info(f"File watcher: Processing new segment {file_path.name} (stream: {stream_key})")
+            # Queue for analysis
+            self.analyzer.queue_segment_analysis(stream_key, str(file_path))
+            logger.info(f"File watcher: Queued segment for analysis: {file_path.name}")
         except Exception as e:
             logger.error(f"File watcher: Error processing {file_path}: {e}")
             import traceback

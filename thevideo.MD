@@ -18,15 +18,15 @@ video structure
 			keyboards (early days)
 			music vs coding (the gap gets wider)
 			recurrent back to basics
+		behind the scenes
+			the setup
+			deskmeter
+			timelapses/ffmpeg
 	demo
 		phase 1
 		phase 2
 		phase 3
 	extras
-		behind the scenes
-			the setup
-			deskmeter
-			timelapses/ffmpeg
 		opinions
 			bootcamps
 			pimp-up-your-profile new trend
