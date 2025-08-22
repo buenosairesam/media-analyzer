@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Analysis, DetectionResult, VisualAnalysis } from '../../models/analysis';
 
@@ -9,10 +9,18 @@ import { Analysis, DetectionResult, VisualAnalysis } from '../../models/analysis
   templateUrl: './analysis-panel.component.html',
   styleUrl: './analysis-panel.component.scss'
 })
-export class AnalysisPanelComponent {
+export class AnalysisPanelComponent implements OnChanges {
   @Input() analyses: Analysis[] = [];
   @Input() currentDetections: DetectionResult[] = [];
   @Input() currentVisual?: VisualAnalysis;
+
+  ngOnChanges() {
+    console.log('AnalysisPanel - detections changed:', this.currentDetections.length);
+    console.log('AnalysisPanel - visual changed:', !!this.currentVisual);
+    if (this.currentDetections.length > 0) {
+      console.log('AnalysisPanel - detection details:', this.currentDetections);
+    }
+  }
 
   getDetectionsByType(type: string): DetectionResult[] {
     return this.currentDetections.filter(d => d.detection_type === type);

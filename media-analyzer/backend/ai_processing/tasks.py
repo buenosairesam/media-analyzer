@@ -84,17 +84,16 @@ def analyze_logo_detection(self, stream_key, segment_path, session_id=None):
                 )
                 detections.append(detection.to_dict())
         
-        # Send results via WebSocket if detections found
-        if detections:
-            websocket_group = f"stream_{stream_key}"
-            logger.info(f"Sending websocket update to group: {websocket_group}")
-            async_to_sync(channel_layer.group_send)(
-                websocket_group,
-                {
-                    "type": "analysis_update",
-                    "analysis": analysis.to_dict()
-                }
-            )
+        # Send results via WebSocket (always send, even with 0 detections)
+        websocket_group = f"stream_{stream_key}"
+        logger.info(f"Sending websocket update to group: {websocket_group} - detections: {len(detections)}")
+        async_to_sync(channel_layer.group_send)(
+            websocket_group,
+            {
+                "type": "analysis_update",  
+                "analysis": analysis.to_dict()
+            }
+        )
         
         # Update queue status
         if queue_item:

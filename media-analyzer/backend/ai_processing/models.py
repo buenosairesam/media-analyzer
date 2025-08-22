@@ -51,7 +51,8 @@ class VideoAnalysis(models.Model):
     def to_dict(self):
         return {
             'id': str(self.id),
-            'stream_key': self.stream_key,
+            'stream_id': self.stream_key,  # Frontend expects 'stream_id'
+            'session_id': self.session_id,
             'timestamp': self.timestamp.isoformat(),
             'processing_time': self.processing_time,
             'analysis_type': self.analysis_type,

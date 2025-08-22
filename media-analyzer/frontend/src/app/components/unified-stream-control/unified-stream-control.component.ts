@@ -93,6 +93,10 @@ import { Stream } from '../../models/stream';
             <span class="label">Started:</span>
             <span class="value">{{ formatTime(streamState.currentSession.startedAt) }}</span>
           </div>
+          <div class="session-detail">
+            <span class="label">Session ID:</span>
+            <span class="value">{{ streamState.currentSession.id }}</span>
+          </div>
         </div>
       </div>
 

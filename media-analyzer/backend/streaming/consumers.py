@@ -29,6 +29,7 @@ class StreamAnalysisConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
             message_type = data.get('type')
+            logger.info(f"WebSocket received message: {data}")
 
             if message_type == 'ping':
                 await self.send(text_data=json.dumps({
@@ -38,11 +39,13 @@ class StreamAnalysisConsumer(AsyncWebsocketConsumer):
             elif message_type == 'subscribe':
                 stream_key = data.get('stream_id')  # Frontend still sends 'stream_id' but it's actually stream_key
                 session_id = data.get('session_id')  # Get session ID from frontend
+                logger.info(f"Subscribe request: stream_key={stream_key}, session_id={session_id}")
                 if stream_key and stream_key not in self.subscribed_streams:
                     self.subscribed_streams.add(stream_key)
                     self.stream_sessions[stream_key] = session_id  # Track session for this stream
                     # Store session in cache for HTTP access (persistent)
                     cache.set(f"stream_session_{stream_key}", session_id, None)  # No expiration
+                    logger.info(f"Stored session in cache: stream_session_{stream_key} = {session_id}")
                     await self.channel_layer.group_add(f"stream_{stream_key}", self.channel_name)
                     await self.send_recent_analysis(stream_key, session_id)
             elif message_type == 'unsubscribe':

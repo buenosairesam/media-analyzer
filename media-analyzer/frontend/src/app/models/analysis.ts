@@ -26,6 +26,7 @@ export interface VisualAnalysis {
 export interface Analysis {
   id: string;
   stream_id: string;
+  session_id?: string;
   timestamp: string;
   processing_time?: number;
   analysis_type: string;

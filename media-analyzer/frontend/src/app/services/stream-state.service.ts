@@ -56,6 +56,8 @@ export class StreamStateService {
   ) {
     this.loadAvailableStreams();
     this.restoreSession();
+    // Auto-connect to active streams after loading
+    this.autoConnectToActiveStream();
   }
 
   // Stream Operations
@@ -211,6 +213,35 @@ export class StreamStateService {
       console.warn('Failed to restore session:', error);
       this.clearSession();
     }
+  }
+
+  // Auto-connection Logic
+  private autoConnectToActiveStream(): void {
+    // Wait a moment for streams to load
+    setTimeout(async () => {
+      const currentSession = this.state.value.currentSession;
+      if (currentSession) {
+        // Already have a session, don't auto-connect
+        return;
+      }
+
+      // Look for active streams
+      const streams = this.state.value.availableStreams;
+      const activeStream = streams.find(s => s.status === 'active');
+      
+      if (activeStream) {
+        console.log('Auto-connecting to active stream:', activeStream.stream_key);
+        // Create a session for the active stream
+        const session = this.createSession(
+          activeStream.stream_key, 
+          activeStream.hls_playlist_url || '', 
+          activeStream.source_type as 'webcam' | 'rtmp'
+        );
+        this.updateState({ currentSession: session });
+        // Connect analysis with the session ID
+        this.analysisService.connectToStream(session.streamKey, session.id);
+      }
+    }, 1000);
   }
 
   // Utility Methods

@@ -35,14 +35,20 @@ export class WebsocketService {
     this.socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('WebSocket message:', data);
+        console.log('🔔 WebSocket message received:', data);
         
         if (data.type === 'analysis_update') {
+          console.log('📊 Analysis update - detections:', data.analysis.detections?.length || 0);
           this.analysisSubject.next(data.analysis);
         } else if (data.type === 'recent_analysis') {
+          console.log('📋 Recent analysis batch:', data.analyses?.length || 0);
           data.analyses.forEach((analysis: Analysis) => {
             this.analysisSubject.next(analysis);
           });
+        } else if (data.type === 'pong') {
+          console.log('🏓 Pong received');
+        } else {
+          console.log('❓ Unknown message type:', data.type);
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -71,7 +77,10 @@ export class WebsocketService {
 
   send(message: any) {
     if (this.socket?.readyState === WebSocket.OPEN) {
+      console.log('Sending WebSocket message:', message);
       this.socket.send(JSON.stringify(message));
+    } else {
+      console.log('Cannot send message - WebSocket not open:', this.socket?.readyState);
     }
   }
 
@@ -85,11 +94,26 @@ export class WebsocketService {
   subscribe(streamId: string, sessionId?: string) {
     this.currentStreamId = streamId;
     this.connect();
+    
+    // Wait for connection to be open before subscribing
     const message: any = { type: 'subscribe', stream_id: streamId };
     if (sessionId) {
       message.session_id = sessionId;
     }
-    this.send(message);
+    
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.send(message);
+    } else {
+      // Wait for WebSocket to open, then subscribe
+      const checkAndSend = () => {
+        if (this.socket?.readyState === WebSocket.OPEN) {
+          this.send(message);
+        } else {
+          setTimeout(checkAndSend, 100);
+        }
+      };
+      setTimeout(checkAndSend, 100);
+    }
   }
   
   unsubscribe() {
