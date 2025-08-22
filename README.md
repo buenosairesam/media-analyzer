@@ -1,73 +1,64 @@
-# Media Analyzer
+# Real-Time Video AI Analysis Platform
 
-Real-time video streaming and AI analysis platform that demonstrates modern cloud-native architecture and machine learning integration. The system ingests RTMP video streams (from sources like OBS), processes them with computer vision AI models, and provides live analysis results through a responsive web dashboard.
+![Control Panel Overview](def/panel_capture.png)
 
-## Features
+A production-ready video streaming platform with real-time AI logo detection, demonstrating scalable microservices architecture and modern web technologies.
 
-- **Video Ingestion**: Accept RTMP streams and convert to HLS for web playback
-- **AI Processing**: Real-time object detection (YOLO) and scene analysis (CLIP) on video segments
-- **Live Dashboard**: Angular frontend with WebSocket-powered real-time analysis overlays
-- **Scalable Architecture**: Kubernetes-deployed microservices with configurable processing modes
-- **Cloud Integration**: GCP services integration while maintaining platform agnostic design
+## Quick Demo
+
+```bash
+docker compose up
+```
+
+**Test the system:**
+1. Open http://localhost:3000 (frontend)
+2. Start webcam stream or use RTMP from OBS
+3. Show logos from `/logos/` folder to camera for real-time detection
+4. Watch live detection results and visual overlays
+
+## Architecture Overview
+
+![System Architecture](def/architecture_diagram.png)
+
+**Key Design Patterns:**
+
+- **Source Adapters** (`streaming/source_adapters.py`) - Abstract webcam vs RTMP input
+- **Execution Strategies** (`ai_processing/execution_strategies/`) - Local vs distributed processing  
+- **Analysis Adapters** (`ai_processing/adapters/`) - Pluggable AI models (CLIP, GCP Vision)
+- **Queue Segregation** - Separate Celery workers for different analysis types
+
+## Code Organization
+
+```
+├── backend/
+│   ├── streaming/           # Video ingestion (RTMP/Webcam)
+│   ├── ai_processing/       # AI analysis pipeline
+│   │   ├── adapters/        # Pluggable AI models
+│   │   ├── execution_strategies/  # Local/cloud/distributed
+│   │   └── tasks.py         # Celery workers
+│   └── effects/             # Real-time video effects (future)
+├── frontend/                # Angular 17+ SPA
+├── k8s/                     # Kubernetes manifests
+└── logos/                   # Test images (Apple, Nike, etc.)
+```
 
 ## Tech Stack
 
-- **Backend**: Django + Django Channels, PostgreSQL, Redis, Celery
-- **AI/ML**: OpenCV, YOLO, CLIP, Whisper (Hugging Face Transformers)
-- **Frontend**: Angular 17+ with HLS.js video player and Canvas overlays
-- **Infrastructure**: Docker containers, Kubernetes, NGINX
-- **Streaming**: FFmpeg for RTMP�HLS conversion, WebSocket for real-time data
+- **Backend**: Django + Channels, Celery, PostgreSQL, Redis
+- **AI/ML**: PyTorch + CLIP, OpenCV, GCP Vision API
+- **Frontend**: Angular 17, WebSockets, HLS.js
+- **Infrastructure**: Docker, Kubernetes, NGINX
 
-## Quick Start
+## Features Implemented
 
-### Option 1: Docker Compose (Development)
+✅ **Real-time logo detection** (CLIP + GCP Vision)  
+✅ **Live video streaming** (webcam/RTMP → HLS)  
+✅ **WebSocket overlays** (detection boxes, confidence scores)  
+✅ **Kubernetes deployment** (auto-scaling, health checks)  
+✅ **Modular architecture** (adapters, strategies, queues)  
 
-```bash
-# Start all services
-docker compose up
+🔄 **In progress**: Visual properties, audio transcription, distributed processing
 
-# Run migrations (in separate terminal)
-docker compose --profile tools up migrate
+---
 
-# Access the application
-# Frontend: http://localhost:4200
-# Backend API: http://localhost:8000
-# RTMP Stream: rtmp://localhost:1935/live
-# HLS Stream: http://localhost:8081/hls
-```
-
-### Option 2: Kubernetes (Production-ready)
-
-```bash
-# Build and push images to local registry
-./k8s/build-for-ctlptl.sh
-
-# Deploy to Kubernetes
-kubectl apply -k k8s/overlays/development
-
-# Check deployment status
-kubectl get pods -n media-analyzer
-
-# Access via port forwarding
-kubectl port-forward service/frontend -n media-analyzer 4200:80
-```
-
-## Architecture
-
-- **Django Backend**: Main API server with WebSocket support for real-time communication
-- **Celery Workers**: Distributed task processing for AI analysis (logo detection, visual analysis)
-- **PostgreSQL**: Primary database for application data and analysis results
-- **Redis**: Cache and message broker for Celery tasks
-- **Angular Frontend**: Single-page application with real-time video analysis overlays
-- **NGINX RTMP**: Stream ingestion server for OBS and other RTMP sources
-
-## Development
-
-The system supports both local development with hot reload and production deployment:
-
-- **Development**: Uses Angular dev server and Django development server
-- **Production**: Uses nginx for static files and optimized Docker images
-
-## Demo
-
-Stream video from OBS Studio to `rtmp://localhost:1935/live` and watch real-time AI analysis in the web dashboard with live object detection overlays.
+*This project demonstrates full-stack capabilities: AI/ML integration, real-time systems, cloud-native architecture, and modern web development.*
