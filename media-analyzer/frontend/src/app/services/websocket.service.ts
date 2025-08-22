@@ -7,6 +7,7 @@ import { Analysis } from '../models/analysis';
 })
 export class WebsocketService {
   private socket?: WebSocket;
+  private currentStreamId?: string;
   private analysisSubject = new Subject<Analysis>();
   private connectionStatus = new BehaviorSubject<boolean>(false);
   
@@ -15,13 +16,13 @@ export class WebsocketService {
 
   constructor() { }
 
-  connect(streamId: string) {
+  connect() {
     if (this.socket?.readyState === WebSocket.OPEN) {
       return;
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/stream/${streamId}/`;
+    const wsUrl = `${protocol}//${window.location.host}/ws/stream/`;
     console.log('Connecting to WebSocket:', wsUrl);
     
     this.socket = new WebSocket(wsUrl);
@@ -63,6 +64,7 @@ export class WebsocketService {
     if (this.socket) {
       this.socket.close();
       this.socket = undefined;
+      this.currentStreamId = undefined;
       this.connectionStatus.next(false);
     }
   }
@@ -78,5 +80,18 @@ export class WebsocketService {
       type: 'ping',
       timestamp: Date.now()
     });
+  }
+  
+  subscribe(streamId: string) {
+    this.currentStreamId = streamId;
+    this.connect();
+    this.send({ type: 'subscribe', stream_id: streamId });
+  }
+  
+  unsubscribe() {
+    if (this.currentStreamId) {
+      this.send({ type: 'unsubscribe', stream_id: this.currentStreamId });
+      this.currentStreamId = undefined;
+    }
   }
 }

@@ -26,7 +26,7 @@ application = ProtocolTypeRouter({
     "http": django_asgi_app,
     "websocket": AuthMiddlewareStack(
         URLRouter([
-            path("ws/stream/<str:stream_id>/", StreamAnalysisConsumer.as_asgi()),
+            path("ws/stream/", StreamAnalysisConsumer.as_asgi()),
         ])
     ),
 })

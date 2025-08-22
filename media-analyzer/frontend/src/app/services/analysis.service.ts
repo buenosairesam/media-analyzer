@@ -25,10 +25,11 @@ export class AnalysisService {
 
   connectToStream(streamId: string) {
     this.streamStartTime = new Date();
-    this.websocketService.connect(streamId);
+    this.websocketService.subscribe(streamId);
   }
 
   disconnect() {
+    this.websocketService.unsubscribe();
     this.websocketService.disconnect();
     this.currentDetections.next([]);
     this.currentVisual.next(null);
