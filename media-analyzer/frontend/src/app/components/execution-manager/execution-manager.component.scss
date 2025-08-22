@@ -1,0 +1,113 @@
+.execution-manager {
+  padding: 20px;
+}
+
+.execution-manager h2 {
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.description {
+  color: #666;
+  margin-bottom: 20px;
+  font-style: italic;
+}
+
+.manager-content {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  background: #fafafa;
+}
+
+.manager-content.disabled {
+  opacity: 0.6;
+  background: #f8f8f8;
+  border-color: #ccc;
+}
+
+.execution-modes {
+  margin-bottom: 25px;
+}
+
+.mode-option {
+  margin-bottom: 15px;
+}
+
+.radio-container {
+  display: flex;
+  align-items: center;
+  cursor: not-allowed;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.radio-container:hover {
+  border-color: #bbb;
+}
+
+.radio-container input[type="radio"] {
+  margin-right: 12px;
+  cursor: not-allowed;
+}
+
+.radio-container input[type="radio"]:disabled {
+  opacity: 0.5;
+}
+
+.radio-checkmark {
+  margin-right: 12px;
+}
+
+.mode-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.mode-label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.mode-description {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.status-section {
+  border-top: 1px solid #ddd;
+  padding-top: 20px;
+  position: relative;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.status-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.status-value {
+  color: #333;
+  font-weight: 600;
+}
+
+.feature-badge {
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  background: #17a2b8;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+}

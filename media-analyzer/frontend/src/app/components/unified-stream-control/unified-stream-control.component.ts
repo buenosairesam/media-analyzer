@@ -4,15 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { StreamStateService, StreamState, StreamSession } from '../../services/stream-state.service';
 import { Stream } from '../../models/stream';
+import { ExecutionManagerComponent } from '../execution-manager/execution-manager.component';
+import { AnalysisManagerComponent } from '../analysis-manager/analysis-manager.component';
 
 @Component({
   selector: 'app-unified-stream-control',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ExecutionManagerComponent, AnalysisManagerComponent],
   template: `
     <div class="stream-control-panel">
       <div class="panel-header">
-        <h3>Stream Control</h3>
+        <h3>Control Panel</h3>
         <div class="status-indicator" [class]="getStatusClass()">
           {{ getStatusText() }}
         </div>
@@ -154,6 +156,12 @@ import { Stream } from '../../models/stream';
           </div>
         </div>
       </div>
+
+      <!-- Execution Manager -->
+      <app-execution-manager></app-execution-manager>
+
+      <!-- Analysis Manager -->
+      <app-analysis-manager></app-analysis-manager>
 
       <!-- Loading Overlay -->
       <div class="loading-overlay" *ngIf="streamState.isLoading">
@@ -582,6 +590,11 @@ export class UnifiedStreamControlComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(state => {
         this.streamState = state;
+        
+        // Update source selection based on active stream
+        if (state.currentSession) {
+          this.selectedSourceType = state.currentSession.sourceType as 'webcam' | 'rtmp';
+        }
       });
   }
 
