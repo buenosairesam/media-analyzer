@@ -51,7 +51,11 @@ export class StreamControlComponent {
 
   startStream(stream: Stream) {
     this.streamService.startStream(stream.stream_key).subscribe({
-      next: () => {
+      next: (response) => {
+        console.log('Stream started, HLS URL:', response.hls_playlist_url);
+        // Emit the stream selection immediately with the HLS URL from response
+        this.streamSelected.emit(response.hls_playlist_url);
+        // Then reload streams to get updated status
         this.loadStreams();
       },
       error: (error) => console.error('Error starting stream:', error)

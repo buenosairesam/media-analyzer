@@ -37,10 +37,13 @@ export class AnalysisService {
   }
 
   private handleAnalysisUpdate(analysis: Analysis) {
-    // Filter out analysis from before stream started
+    console.log('Received analysis update:', analysis);
+    
+    // Filter out analysis from before stream started (with 30 second buffer for recent analysis)
     if (this.streamStartTime && analysis.timestamp) {
       const analysisTime = new Date(analysis.timestamp);
-      if (analysisTime < this.streamStartTime) {
+      const bufferTime = new Date(this.streamStartTime.getTime() - 30000); // 30 seconds before stream start
+      if (analysisTime < bufferTime) {
         console.log('Ignoring old analysis from before stream start:', {
           analysisTime: analysisTime.toISOString(),
           streamStart: this.streamStartTime.toISOString()

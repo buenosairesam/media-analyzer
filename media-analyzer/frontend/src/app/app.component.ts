@@ -5,6 +5,7 @@ import { StreamControlComponent } from './components/stream-control/stream-contr
 import { StreamViewerComponent } from './components/stream-viewer/stream-viewer.component';
 import { AnalysisPanelComponent } from './components/analysis-panel/analysis-panel.component';
 import { AnalysisService } from './services/analysis.service';
+import { StreamService } from './services/stream.service';
 import { DetectionResult, VisualAnalysis, Analysis } from './models/analysis';
 
 @Component({
@@ -24,7 +25,10 @@ export class AppComponent implements OnInit, OnDestroy {
   currentVisual?: VisualAnalysis;
   recentAnalyses: Analysis[] = [];
 
-  constructor(private analysisService: AnalysisService) {}
+  constructor(
+    private analysisService: AnalysisService,
+    private streamService: StreamService
+  ) {}
 
   ngOnInit() {
     // Subscribe to analysis updates
@@ -49,17 +53,44 @@ export class AppComponent implements OnInit, OnDestroy {
     console.log('App received stream URL:', streamUrl);
     
     // Extract filename from backend URL, then construct a browser-resolvable URL
-    // Build relative HLS URL for the browser
     const filename = streamUrl.split('/').pop() || '';
     this.selectedStreamUrl = `/streaming/${filename}`;
     console.log('Using HLS URL:', this.selectedStreamUrl);
     
-    // Extract stream ID from filename: 476c0bd7-d037-4b6c-a29d-0773c19a76c5.m3u8 or webcam-9516729d.m3u8
+    // Retry function to get active stream (with small delays to allow DB update)
+    const getActiveStreamWithRetry = (attempt = 1, maxAttempts = 3) => {
+      this.streamService.getStreams().subscribe({
+        next: (response) => {
+          const activeStream = response.streams.find(stream => stream.status === 'active');
+          if (activeStream) {
+            this.currentStreamId = activeStream.stream_key;
+            console.log('Found active stream with key:', this.currentStreamId);
+            // Connect to WebSocket for this stream
+            this.analysisService.connectToStream(this.currentStreamId);
+          } else if (attempt < maxAttempts) {
+            console.log(`No active stream found (attempt ${attempt}/${maxAttempts}), retrying in 1s...`);
+            setTimeout(() => getActiveStreamWithRetry(attempt + 1, maxAttempts), 1000);
+          } else {
+            console.log('No active stream found after retries, falling back to filename parsing');
+            this.fallbackToFilenameExtraction(filename);
+          }
+        },
+        error: (error) => {
+          console.error('Failed to get streams from API:', error);
+          this.fallbackToFilenameExtraction(filename);
+        }
+      });
+    };
+    
+    // Start the retry process
+    getActiveStreamWithRetry();
+  }
+  
+  private fallbackToFilenameExtraction(filename: string) {
     const streamIdMatch = filename.match(/^([a-zA-Z0-9-]+)\.m3u8$/);
     if (streamIdMatch) {
       this.currentStreamId = streamIdMatch[1];
-      console.log('Extracted stream ID:', this.currentStreamId);
-      // Connect to WebSocket for this stream
+      console.log('Fallback: Extracted stream ID from filename:', this.currentStreamId);
       this.analysisService.connectToStream(this.currentStreamId);
     } else {
       console.error('Could not extract stream ID from filename:', filename);
