@@ -4,6 +4,8 @@ digraph MediaAnalyzer {
     bgcolor="white";
     fontname="Arial";
     fontsize=12;
+    ratio=fill;
+    size="12,16!";
     
     // Node defaults
     node [fontname="Arial", fontsize=10, shape=box, style=filled];

@@ -18,7 +18,7 @@ docker compose up
 
 ## Architecture Overview
 
-![System Architecture](def/architecture_diagram.png)
+![System Architecture](def/architecture/architecture_diagram.svg)
 
 **Key Design Patterns:**
 
