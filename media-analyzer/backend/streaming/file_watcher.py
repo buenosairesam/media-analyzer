@@ -16,27 +16,27 @@ class HLSFileWatcher:
         self.processed_files = set()
         self.analyzer = VideoAnalyzer()
         
-    def get_stream_id_from_filename(self, filename):
+    def get_stream_key_from_filename(self, filename):
         """Extract stream_key from filename: 'stream_key-segment_number.ts' -> 'stream_key'"""
         if not filename.endswith('.ts'):
             return None
             
         base_name = filename.rsplit('.', 1)[0]  # Remove .ts extension
-        stream_id = base_name.rsplit('-', 1)[0]  # Remove last segment: "-123"
-        return stream_id if stream_id else None
+        stream_key = base_name.rsplit('-', 1)[0]  # Remove last segment: "-123"
+        return stream_key if stream_key else None
     
     def process_new_segment(self, file_path):
         """Process a new HLS segment file"""
         try:
             filename = file_path.name
-            stream_id = self.get_stream_id_from_filename(filename)
+            stream_key = self.get_stream_key_from_filename(filename)
             
-            if stream_id:
-                logger.info(f"File watcher: Processing new segment {filename} (stream: {stream_id})")
-                self.analyzer.queue_segment_analysis(stream_id, str(file_path))
+            if stream_key:
+                logger.info(f"File watcher: Processing new segment {filename} (stream: {stream_key})")
+                self.analyzer.queue_segment_analysis(stream_key, str(file_path))
                 logger.info(f"File watcher: Queued segment for analysis: {filename}")
             else:
-                logger.warning(f"File watcher: Could not extract stream_id from {filename}")
+                logger.warning(f"File watcher: Could not extract stream_key from {filename}")
                 
         except Exception as e:
             logger.error(f"File watcher: Error processing {file_path}: {e}")

@@ -37,7 +37,7 @@ class Brand(models.Model):
 
 class VideoAnalysis(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    stream_id = models.CharField(max_length=100)
+    stream_key = models.CharField(max_length=100)  # Use stream_key instead of stream_id
     segment_path = models.CharField(max_length=500)
     timestamp = models.DateTimeField(auto_now_add=True)
     processing_time = models.FloatField(null=True)
@@ -50,7 +50,7 @@ class VideoAnalysis(models.Model):
     def to_dict(self):
         return {
             'id': str(self.id),
-            'stream_id': self.stream_id,
+            'stream_key': self.stream_key,
             'timestamp': self.timestamp.isoformat(),
             'processing_time': self.processing_time,
             'analysis_type': self.analysis_type,
@@ -62,7 +62,7 @@ class VideoAnalysis(models.Model):
     
     class Meta:
         indexes = [
-            models.Index(fields=['stream_id', 'timestamp']),
+            models.Index(fields=['stream_key', 'timestamp']),
             models.Index(fields=['analysis_type']),
         ]
 
@@ -137,7 +137,7 @@ class Brand(models.Model):
 
 class ProcessingQueue(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    stream_id = models.CharField(max_length=100)
+    stream_key = models.CharField(max_length=100)  # Use stream_key instead of stream_id
     segment_path = models.CharField(max_length=500)
     priority = models.IntegerField(default=0)
     status = models.CharField(max_length=20, choices=[
@@ -155,5 +155,5 @@ class ProcessingQueue(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['status', 'priority']),
-            models.Index(fields=['stream_id']),
+            models.Index(fields=['stream_key']),
         ]

@@ -67,6 +67,7 @@ def list_streams(request):
             'name': s.name,
             'source_type': s.source_type,
             'processing_mode': s.processing_mode,
+            'stream_key': s.stream_key,
             'status': s.status,
             'hls_playlist_url': f"{settings.HLS_BASE_URL}{settings.HLS_ENDPOINT_PATH}{s.stream_key}.m3u8" if s.status == 'active' else None,
             'rtmp_ingest_url': f"rtmp://{request.get_host().split(':')[0]}:{settings.RTMP_PORT}/live",
@@ -77,9 +78,9 @@ def list_streams(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def start_stream(request, stream_id):
+def start_stream(request, stream_key):
     """Start stream processing"""
-    stream = get_object_or_404(VideoStream, id=stream_id)
+    stream = get_object_or_404(VideoStream, stream_key=stream_key)
     
     try:
         adapter = SourceAdapterFactory.create_adapter(stream)
@@ -94,15 +95,15 @@ def start_stream(request, stream_id):
             return JsonResponse({'error': 'Failed to start stream'}, status=500)
             
     except Exception as e:
-        logger.error(f"Error starting stream {stream_id}: {e}")
+        logger.error(f"Error starting stream {stream_key}: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt  
 @require_http_methods(["POST"])
-def stop_stream(request, stream_id):
+def stop_stream(request, stream_key):
     """Stop stream processing"""
-    stream = get_object_or_404(VideoStream, id=stream_id)
+    stream = get_object_or_404(VideoStream, stream_key=stream_key)
     
     try:
         adapter = SourceAdapterFactory.create_adapter(stream)
@@ -114,7 +115,7 @@ def stop_stream(request, stream_id):
             return JsonResponse({'error': 'Failed to stop stream'}, status=500)
             
     except Exception as e:
-        logger.error(f"Error stopping stream {stream_id}: {e}")
+        logger.error(f"Error stopping stream {stream_key}: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -135,17 +136,17 @@ def serve_hls_file(request, filename):
             # Extract stream_key from filename: "stream_key-segment_number.ts" -> "stream_key"
             # Example: "69f79422-5816-4cf0-9f44-0ac1421b8b8e-123.ts" -> "69f79422-5816-4cf0-9f44-0ac1421b8b8e"
             base_name = filename.rsplit('.', 1)[0]  # Remove .ts extension
-            stream_id = base_name.rsplit('-', 1)[0]  # Remove last segment: "-123"
-            logger.info(f"Parsed stream_id: {stream_id} from filename: {filename}")
+            stream_key = base_name.rsplit('-', 1)[0]  # Remove last segment: "-123"
+            logger.info(f"Parsed stream_key: {stream_key} from filename: {filename}")
             
-            if stream_id:
+            if stream_key:
                 # Queue for analysis
                 logger.info(f"Attempting to queue analysis for {filename}")
                 analyzer = VideoAnalyzer()
-                analyzer.queue_segment_analysis(stream_id, file_path)
-                logger.info(f"Queued segment for analysis: {filename} (stream: {stream_id})")
+                analyzer.queue_segment_analysis(stream_key, file_path)
+                logger.info(f"Queued segment for analysis: {filename} (stream: {stream_key})")
             else:
-                logger.warning(f"No stream_id extracted from {filename}")
+                logger.warning(f"No stream_key extracted from {filename}")
             
         except Exception as e:
             logger.error(f"Error queuing analysis for {filename}: {e}")
@@ -169,23 +170,25 @@ def serve_hls_file(request, filename):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def trigger_analysis(request, stream_id):
+def trigger_analysis(request, stream_key):
     """Manually trigger analysis for testing"""
     try:
         data = json.loads(request.body) if request.body else {}
         segment_path = data.get('segment_path')
         
         if not segment_path:
-            # Find latest segment
-            media_dir = os.path.join(settings.BASE_DIR.parent.parent, 'media')
+            # Find latest segment in media directory
+            media_dir = settings.MEDIA_ROOT
             ts_files = [f for f in os.listdir(media_dir) if f.endswith('.ts')]
             if ts_files:
+                # Sort by filename to get the latest segment
+                ts_files.sort()
                 segment_path = os.path.join(media_dir, ts_files[-1])
             else:
                 return JsonResponse({'error': 'No segments found'}, status=404)
         
         analyzer = VideoAnalyzer()
-        success = analyzer.queue_segment_analysis(stream_id, segment_path)
+        success = analyzer.queue_segment_analysis(stream_key, segment_path)
         
         if success:
             return JsonResponse({'message': 'Analysis triggered', 'segment': segment_path})
@@ -218,9 +221,11 @@ def start_webcam_stream(request):
         # Check if another stream is active
         active_streams = VideoStream.objects.filter(status=StreamStatus.ACTIVE).exclude(id=webcam_stream.id)
         if active_streams.exists():
+            other = active_streams.first()
             return JsonResponse({
-                'error': f'Another stream is active: {active_streams.first().name}',
-                'active_stream': active_streams.first().name
+                'error': f'Another stream is active: {other.name}',
+                'active_stream_key': other.stream_key,
+                'active_stream_name': other.name
             }, status=409)
         
         # Start the webcam stream if not already active

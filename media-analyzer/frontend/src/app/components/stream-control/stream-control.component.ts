@@ -50,7 +50,7 @@ export class StreamControlComponent {
   }
 
   startStream(stream: Stream) {
-    this.streamService.startStream(stream.id).subscribe({
+    this.streamService.startStream(stream.stream_key).subscribe({
       next: () => {
         this.loadStreams();
       },
@@ -59,7 +59,7 @@ export class StreamControlComponent {
   }
 
   stopStream(stream: Stream) {
-    this.streamService.stopStream(stream.id).subscribe({
+    this.streamService.stopStream(stream.stream_key).subscribe({
       next: () => {
         this.loadStreams();
         // Emit event to clear the player
@@ -79,7 +79,19 @@ export class StreamControlComponent {
       error: (error) => {
         console.error('Error starting webcam:', error);
         if (error.status === 409) {
-          alert(`Cannot start webcam: ${error.error.error}`);
+          const activeStreamKey = error.error.active_stream_key;
+          if (activeStreamKey) {
+            console.log(`Stopping active stream ${activeStreamKey} before retrying webcam`);
+            this.streamService.stopStream(activeStreamKey).subscribe({
+              next: () => this.startWebcam(),
+              error: (stopError) => {
+                console.error('Error stopping active stream:', stopError);
+                alert(`Cannot start webcam: ${error.error.error}`);
+              }
+            });
+          } else {
+            alert(`Cannot start webcam: ${error.error.error}`);
+          }
         }
       }
     });

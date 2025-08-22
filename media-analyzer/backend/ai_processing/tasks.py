@@ -11,13 +11,13 @@ channel_layer = get_channel_layer()
 
 
 @shared_task(bind=True, queue='logo_detection')
-def analyze_logo_detection(self, stream_id, segment_path):
+def analyze_logo_detection(self, stream_key, segment_path):
     """Dedicated task for logo detection analysis"""
     queue_item = None
     try:
         # Update queue status
         queue_item = ProcessingQueue.objects.filter(
-            stream_id=stream_id, 
+            stream_key=stream_key, 
             segment_path=segment_path,
             status='pending'
         ).first()
@@ -60,7 +60,7 @@ def analyze_logo_detection(self, stream_id, segment_path):
         provider = AnalysisProvider.objects.get(id=provider_info['id'])
         
         analysis = VideoAnalysis.objects.create(
-            stream_id=stream_id,
+            stream_key=stream_key,
             segment_path=segment_path,
             provider=provider,
             analysis_type='logo_detection',
@@ -85,7 +85,7 @@ def analyze_logo_detection(self, stream_id, segment_path):
         
         # Send results via WebSocket if detections found
         if detections:
-            websocket_group = f"stream_{stream_id}"
+            websocket_group = f"stream_{stream_key}"
             logger.info(f"Sending websocket update to group: {websocket_group}")
             async_to_sync(channel_layer.group_send)(
                 websocket_group,
@@ -117,13 +117,13 @@ def analyze_logo_detection(self, stream_id, segment_path):
 
 
 @shared_task(bind=True, queue='visual_analysis') 
-def analyze_visual_properties(self, stream_id, segment_path):
+def analyze_visual_properties(self, stream_key, segment_path):
     """Dedicated task for visual property analysis"""
     queue_item = None
     try:
         # Update queue status
         queue_item = ProcessingQueue.objects.filter(
-            stream_id=stream_id, 
+            stream_key=stream_key, 
             segment_path=segment_path,
             status='pending'
         ).first()
@@ -150,7 +150,7 @@ def analyze_visual_properties(self, stream_id, segment_path):
         
         # Store results (no provider needed for local visual analysis)
         analysis = VideoAnalysis.objects.create(
-            stream_id=stream_id,
+            stream_key=stream_key,
             segment_path=segment_path,
             provider=None,  # Local analysis
             analysis_type='visual_analysis',
@@ -170,7 +170,7 @@ def analyze_visual_properties(self, stream_id, segment_path):
         
         # Send results via WebSocket
         async_to_sync(channel_layer.group_send)(
-            f"stream_{stream_id}",
+            f"stream_{stream_key}",
             {
                 "type": "analysis_update",
                 "analysis": analysis.to_dict()
@@ -195,17 +195,17 @@ def analyze_visual_properties(self, stream_id, segment_path):
 
 
 @shared_task(bind=True)
-def process_video_segment(self, stream_id, segment_path):
+def process_video_segment(self, stream_key, segment_path):
     """Main task that dispatches to specialized analysis tasks"""
     try:
         # Dispatch to specialized queues based on available capabilities
         active_capabilities = config_manager.get_active_capabilities()
         
         if 'logo_detection' in active_capabilities:
-            analyze_logo_detection.delay(stream_id, segment_path)
+            analyze_logo_detection.delay(stream_key, segment_path)
         
         # Visual analysis disabled for performance - only logo detection
-        # analyze_visual_properties.delay(stream_id, segment_path)
+        # analyze_visual_properties.delay(stream_key, segment_path)
         
         return {"dispatched": True, "capabilities": active_capabilities}
         
@@ -227,7 +227,7 @@ def reload_analysis_config():
 
 
 @shared_task
-def analyze_frame_task(stream_id, segment_path, frame_timestamp=0.0):
+def analyze_frame_task(stream_key, segment_path, frame_timestamp=0.0):
     """Analyze a single frame from video segment"""
     try:
         engine = AnalysisEngine()
@@ -256,7 +256,7 @@ def analyze_frame_task(stream_id, segment_path, frame_timestamp=0.0):
         results = engine.analyze_frame(frame, ['logo_detection', 'visual_analysis'])
         
         return {
-            "stream_id": stream_id,
+            "stream_key": stream_key,
             "results": results,
             "frame_timestamp": frame_timestamp
         }

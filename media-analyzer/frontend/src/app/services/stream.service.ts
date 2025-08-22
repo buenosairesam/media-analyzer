@@ -24,11 +24,11 @@ export class StreamService {
     return this.http.post<Stream>(`${this.apiUrl}/streams/webcam/start/`, {});
   }
 
-  startStream(streamId: number): Observable<{message: string, hls_playlist_url: string}> {
-    return this.http.post<{message: string, hls_playlist_url: string}>(`${this.apiUrl}/streams/${streamId}/start/`, {});
+  startStream(streamKey: string): Observable<{message: string, hls_playlist_url: string}> {
+    return this.http.post<{message: string, hls_playlist_url: string}>(`${this.apiUrl}/streams/${streamKey}/start/`, {});
   }
 
-  stopStream(streamId: number): Observable<{message: string}> {
-    return this.http.post<{message: string}>(`${this.apiUrl}/streams/${streamId}/stop/`, {});
+  stopStream(streamKey: string): Observable<{message: string}> {
+    return this.http.post<{message: string}>(`${this.apiUrl}/streams/${streamKey}/stop/`, {});
   }
 }
