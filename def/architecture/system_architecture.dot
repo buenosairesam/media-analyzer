@@ -71,6 +71,17 @@ digraph MediaAnalyzer {
         cloud_strategy [label="CloudStrategy", fillcolor="#fff3cd"];
     }
     
+    // Event-Driven Processing Pipeline
+    subgraph cluster_events {
+        label="Event-Driven Processing";
+        style=filled;
+        color="#fff3e0";
+        
+        file_watcher [label="HLS File Watcher\n(segment detection)", fillcolor="#d4edda"];
+        redis_events [label="Redis Event Queue\n(segment_events)", fillcolor="#d4edda"];
+        event_processor [label="Event Processor\n(triggers analysis)", fillcolor="#d4edda"];
+    }
+    
     // Analysis Workers (Queue Segregation)
     subgraph cluster_workers {
         label="Celery Workers (Queue Segregation)";
@@ -137,12 +148,20 @@ digraph MediaAnalyzer {
     django -> local_storage [color="#2e7d32"];
     django -> gcs_storage [color="#2e7d32"];
     
+    // Event-driven processing flow
+    local_storage -> file_watcher [label="monitors\nHLS segments", color="#2e7d32"];
+    file_watcher -> redis_events [label="publishes\nevents", color="#2e7d32"];
+    redis_events -> event_processor [label="consumes\nevents", color="#2e7d32"];
+    event_processor -> logo_worker [label="triggers\nanalysis", color="#2e7d32"];
+    
     redis -> logo_worker [color="#2e7d32"];
     logo_worker -> local_strategy [color="#2e7d32"];
     local_strategy -> clip_adapter [color="#2e7d32"];
     local_strategy -> gcp_vision [color="#2e7d32"];
     gcp_vision -> vision_api [color="#2e7d32"];
     
+    // WebSocket real-time updates
+    logo_worker -> django [label="analysis\nresults", color="#2e7d32"];
     django -> angular [label="WebSocket\nAPI", color="#2e7d32"];
     angular -> hls_player [color="#2e7d32"];
     nginx -> angular [color="#2e7d32"];
