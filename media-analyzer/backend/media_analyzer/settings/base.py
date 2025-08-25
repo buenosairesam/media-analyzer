@@ -101,9 +101,10 @@ CELERY_TIMEZONE = 'UTC'
 
 # Celery queue routing
 CELERY_TASK_ROUTES = {
-    'ai_processing.tasks.analyze_logo_detection': {'queue': 'logo_detection'},
     'ai_processing.tasks.analyze_visual_properties': {'queue': 'visual_analysis'},
     'ai_processing.tasks.reload_analysis_config': {'queue': 'config_management'},
+    'ai_processing.event_tasks.process_segment_from_event': {'queue': 'logo_detection'},
+    'ai_processing.event_tasks.start_event_processor': {'queue': 'default'},
 }
 
 # Define queues with different priorities

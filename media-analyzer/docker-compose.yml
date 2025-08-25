@@ -112,7 +112,7 @@ services:
         condition: service_started
     command: ./entrypoint-celery.sh --queues=default,config_management --hostname=default-worker@%h
 
-  # File Watcher - Monitor HLS segments
+  # File Watcher - Monitor HLS segments (publishes events to Redis)
   file-watcher:
     build:
       context: ./backend
@@ -135,6 +135,30 @@ services:
       redis:
         condition: service_started
     command: python manage.py watch_hls_files --poll-interval=2
+  
+  # Event Processor - Consumes segment events from Redis  
+  event-processor:
+    build:
+      context: ./backend
+      target: development
+    volumes:
+      - ./backend:/app
+      - ./media:/app/media
+    environment:
+      - DEBUG=1
+      - DB_HOST=postgres
+      - DB_NAME=media_analyzer
+      - DB_USER=media_user
+      - DB_PASSWORD=media_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MEDIA_ROOT=/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A media_analyzer worker -l info -Q default -c 2 --hostname=event-processor@%h
 
   # Angular Frontend with NGINX (unified approach)
   frontend:

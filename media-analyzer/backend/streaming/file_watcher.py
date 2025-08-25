@@ -1,11 +1,10 @@
 import os
 import time
 import logging
-import shutil
 from pathlib import Path
 from django.conf import settings
-from ai_processing.processors.video_analyzer import VideoAnalyzer
 from .models import VideoStream, StreamStatus
+from .segment_events import SegmentEventPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -16,20 +15,7 @@ class HLSFileWatcher:
         self.media_dir = Path(media_dir or settings.MEDIA_ROOT)
         self.poll_interval = poll_interval
         self.processed_files = set()
-        self.analyzer = VideoAnalyzer()
-        
-        # Create a persistent directory for analysis segments
-        self.analysis_dir = self.media_dir / 'analysis_segments'
-        try:
-            self.analysis_dir.mkdir(exist_ok=True)
-        except PermissionError:
-            logger.warning(f"File watcher: Cannot create {self.analysis_dir}, using temp directory")
-            import tempfile
-            self.analysis_dir = Path(tempfile.mkdtemp(prefix='analysis_segments_'))
-            logger.info(f"File watcher: Using temporary analysis directory: {self.analysis_dir}")
-        
-        # Track copied files for cleanup
-        self.copied_files = set()
+        self.event_publisher = SegmentEventPublisher()
         
     def get_stream_key_from_filename(self, filename):
         """Extract stream_key from filename: 'stream_key-segment_number.ts' -> 'stream_key'"""
@@ -41,54 +27,34 @@ class HLSFileWatcher:
         return stream_key if stream_key else None
     
     def process_new_segment(self, file_path):
-        """Process a new HLS segment file"""
+        """Process a new HLS segment file by publishing event"""
         try:
             # Determine the active stream from the database
             active_stream = VideoStream.objects.filter(status=StreamStatus.ACTIVE).first()
             if not active_stream:
                 logger.warning(f"File watcher: No active stream found, skipping segment {file_path.name}")
                 return
+                
             stream_key = active_stream.stream_key
+            session_id = getattr(active_stream, 'session_id', None)
             logger.info(f"File watcher: Processing new segment {file_path.name} (stream: {stream_key})")
             
-            # Copy the segment to analysis directory to prevent deletion by nginx
-            analysis_file_path = self.analysis_dir / file_path.name
-            shutil.copy2(file_path, analysis_file_path)
-            logger.debug(f"File watcher: Copied segment to {analysis_file_path}")
+            # Publish event to Redis instead of copying file
+            success = self.event_publisher.publish_segment_event(
+                segment_path=str(file_path),
+                stream_key=stream_key,
+                session_id=session_id
+            )
             
-            # Track copied file and cleanup old ones
-            self.copied_files.add(analysis_file_path)
-            self.cleanup_old_analysis_files()
-            
-            # Queue the copied file for analysis
-            self.analyzer.queue_segment_analysis(stream_key, str(analysis_file_path))
-            logger.info(f"File watcher: Queued segment for analysis: {analysis_file_path.name}")
+            if success:
+                logger.info(f"File watcher: Published segment event for {file_path.name}")
+            else:
+                logger.error(f"File watcher: Failed to publish event for {file_path.name}")
+                
         except Exception as e:
             logger.error(f"File watcher: Error processing {file_path}: {e}")
             import traceback
             logger.error(f"File watcher: Traceback: {traceback.format_exc()}")
-    
-    def cleanup_old_analysis_files(self, max_files=20):
-        """Keep only the most recent analysis files to prevent disk space leak"""
-        if len(self.copied_files) <= max_files:
-            return
-            
-        try:
-            # Sort by creation time and remove oldest files
-            files_by_time = sorted(self.copied_files, key=lambda f: f.stat().st_ctime if f.exists() else 0)
-            files_to_remove = files_by_time[:-max_files]  # Keep only last max_files
-            
-            for old_file in files_to_remove:
-                if old_file.exists():
-                    old_file.unlink()
-                    logger.debug(f"File watcher: Cleaned up old analysis file: {old_file.name}")
-                self.copied_files.discard(old_file)
-                
-            if files_to_remove:
-                logger.info(f"File watcher: Cleaned up {len(files_to_remove)} old analysis files")
-                
-        except Exception as e:
-            logger.error(f"File watcher: Error during cleanup: {e}")
     
     def scan_for_new_files(self):
         """Scan for new .ts files in the media directory"""
