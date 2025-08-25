@@ -48,6 +48,7 @@ class HLSFileWatcher:
         """Scan for new .ts files in the media directory"""
         try:
             if not self.media_dir.exists():
+                logger.debug(f"File watcher: Media directory {self.media_dir} does not exist")
                 return
                 
             current_files = set()
@@ -55,18 +56,31 @@ class HLSFileWatcher:
                 if ts_file.is_file():
                     current_files.add(ts_file)
             
+            logger.debug(f"File watcher: Found {len(current_files)} total .ts files, {len(self.processed_files)} already processed")
+            
             # Find new files
             new_files = current_files - self.processed_files
             
+            if new_files:
+                logger.info(f"File watcher: Found {len(new_files)} new files to process")
+                
             for new_file in new_files:
                 self.process_new_segment(new_file)
                 self.processed_files.add(new_file)
                 
         except Exception as e:
             logger.error(f"File watcher: Error scanning directory: {e}")
+            logger.debug(f"File watcher: Scan exception details: {e}")
     
     def start_watching(self):
         """Start the file watching loop"""
+        logger.debug(f"File watcher: Starting to watch {self.media_dir}")
+        logger.debug(f"File watcher: Directory exists: {self.media_dir.exists()}")
+        
+        if self.media_dir.exists():
+            existing_files = list(self.media_dir.glob("*.ts"))
+            logger.debug(f"File watcher: Found {len(existing_files)} existing .ts files")
+        
         logger.info(f"File watcher: Starting to watch {self.media_dir}")
         
         # Initial scan to catch existing files
@@ -81,4 +95,5 @@ class HLSFileWatcher:
                 break
             except Exception as e:
                 logger.error(f"File watcher: Unexpected error: {e}")
+                logger.debug(f"File watcher: Exception traceback: {e}")
                 time.sleep(self.poll_interval)
