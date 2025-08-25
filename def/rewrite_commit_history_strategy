@@ -1,0 +1,46 @@
+Here’s the **concise, command-first** workflow we agreed on (using the **rename/no-force-push** path):
+
+```bash
+# 1) Find base commit (where feature diverged from main)
+BASE=$(git merge-base main feature)
+
+# 2) Create clean branch from base
+git checkout -b feature-clean "$BASE"
+
+# 3) Cherry-pick/group commits (example: group A+B, keep C; group D+E+F, keep G)
+git cherry-pick -n A
+git cherry-pick -n B
+git commit -m "Feat: X — initial implementation (A+B)"
+git cherry-pick C
+git cherry-pick -n D
+git cherry-pick -n E
+git cherry-pick -n F
+git commit -m "Feat: X — refinements (D+E+F)"
+git cherry-pick G
+# (Or: pick everything then `git rebase -i "$BASE"` to squash/fixup selected ones.)
+
+# 4) Verify equivalence
+git range-diff feature...feature-clean
+# (Optional sanity: git diff feature..feature-clean)
+
+# 5) Publish clean branch & preserve old main
+git push -u origin feature-clean
+git push origin main:main-old-2025-08-24
+```
+
+**Then (platform UI):**
+
+1. Set **default branch** to `feature-clean`.
+2. Rename `feature-clean` → `main`.
+3. (If not done in step 5) rename old `main` → `main-old-2025-08-24`.
+4. Reapply branch protections/CI rules on the new `main`.
+
+**Teammates (already cloned) quick sync:**
+
+```bash
+git fetch --all --prune
+git switch main || git checkout -b main origin/main
+git reset --hard origin/main
+# For feature branches based on old main:
+git rebase --rebase-merges --onto origin/main origin/main-old-2025-08-24 <my-branch>
+```

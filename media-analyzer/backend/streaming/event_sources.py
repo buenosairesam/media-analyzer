@@ -94,17 +94,27 @@ class FileWatcherEventSource(SegmentEventSource):
         self.processed_files = set()
         self._monitoring = False
         self._monitor_thread = None
+        self._last_cleanup = time.time()
+        self._cleanup_interval = 300  # Clean processed_files every 5 minutes
         
     def get_stream_key_from_active_stream(self) -> Optional[tuple]:
-        """Get active stream info from database"""
+        """Get active stream info from database with connection management"""
         try:
+            from django.db import connection
             from streaming.models import VideoStream, StreamStatus
+            
+            # Ensure fresh connection
+            connection.ensure_connection()
+            
             active_stream = VideoStream.objects.filter(status=StreamStatus.ACTIVE).first()
             if active_stream:
                 return active_stream.stream_key, getattr(active_stream, 'session_id', None)
             return None, None
         except Exception as e:
             logger.error(f"FileWatcher: Error getting active stream: {e}")
+            # Close potentially broken connection
+            from django.db import connection
+            connection.close()
             return None, None
     
     def process_new_segment(self, file_path: Path) -> None:
@@ -131,6 +141,33 @@ class FileWatcherEventSource(SegmentEventSource):
         except Exception as e:
             logger.error(f"FileWatcher: Error processing {file_path}: {e}")
     
+    def _cleanup_processed_files(self) -> None:
+        """Clean up processed_files set to prevent memory leak"""
+        current_time = time.time()
+        if current_time - self._last_cleanup < self._cleanup_interval:
+            return
+            
+        try:
+            # Only keep files that still exist on disk
+            existing_files = set()
+            if self.media_dir.exists():
+                for ts_file in self.media_dir.glob("*.ts"):
+                    if ts_file.is_file():
+                        existing_files.add(ts_file)
+            
+            # Remove deleted files from processed set
+            old_count = len(self.processed_files)
+            self.processed_files &= existing_files
+            new_count = len(self.processed_files)
+            
+            if old_count != new_count:
+                logger.debug(f"FileWatcher: Cleaned up {old_count - new_count} processed file entries")
+                
+            self._last_cleanup = current_time
+            
+        except Exception as e:
+            logger.error(f"FileWatcher: Error cleaning up processed files: {e}")
+    
     def scan_for_new_files(self) -> None:
         """Scan for new .ts files in the media directory"""
         try:
@@ -152,6 +189,9 @@ class FileWatcherEventSource(SegmentEventSource):
             for new_file in new_files:
                 self.process_new_segment(new_file)
                 self.processed_files.add(new_file)
+            
+            # Periodic cleanup to prevent memory leak
+            self._cleanup_processed_files()
                 
         except Exception as e:
             logger.error(f"FileWatcher: Error scanning directory: {e}")
@@ -191,6 +231,9 @@ class FileWatcherEventSource(SegmentEventSource):
         self._monitoring = False
         if self._monitor_thread and self._monitor_thread.is_alive():
             self._monitor_thread.join(timeout=2.0)
+        
+        # Clear processed files to free memory
+        self.processed_files.clear()
         logger.info("FileWatcher: Stopped monitoring")
     
     def get_source_info(self) -> Dict[str, Any]:
