@@ -77,19 +77,23 @@ TEMPLATES = [
 WSGI_APPLICATION = "media_analyzer.wsgi.application"
 ASGI_APPLICATION = "media_analyzer.asgi.application"
 
+# Redis configuration
+REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
+REDIS_PORT = int(os.getenv('REDIS_PORT', '6379'))
+
 # Channels configuration
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
         },
     },
 }
 
 # Celery configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -171,11 +175,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Media files
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.getenv('MEDIA_ROOT', BASE_DIR / 'media')
 
 # Streaming settings
 RTMP_PORT = int(os.getenv('RTMP_PORT', 1935))
@@ -196,3 +201,94 @@ CORS_ALLOW_ALL_ORIGINS = True
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# =============================================================================
+# GCP and Cloud Services Configuration
+# =============================================================================
+
+# AI Processing Configuration
+USE_CLOUD_VISION = os.getenv('USE_CLOUD_VISION', 'false').lower() == 'true'
+USE_LOCAL_CLIP = not USE_CLOUD_VISION
+
+# Storage Configuration  
+USE_CLOUD_STORAGE = os.getenv('USE_CLOUD_STORAGE', 'false').lower() == 'true'
+GCP_BUCKET_NAME = os.getenv('GCP_BUCKET_NAME', 'media-analyzer-segments')
+GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
+
+# GCS Storage Settings (when USE_CLOUD_STORAGE=true)
+if USE_CLOUD_STORAGE:
+    DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+    GS_BUCKET_NAME = GCP_BUCKET_NAME
+    GS_PROJECT_ID = GCP_PROJECT_ID
+    GS_AUTO_CREATE_BUCKET = True
+    GS_AUTO_CREATE_ACL = 'publicRead'  # For HLS streaming access
+    GS_DEFAULT_ACL = 'publicRead'
+    
+    # Update media URL to use GCS
+    MEDIA_URL = f'https://storage.googleapis.com/{GCP_BUCKET_NAME}/'
+    
+    # HLS endpoint for GCS
+    HLS_BASE_URL = f'https://storage.googleapis.com/{GCP_BUCKET_NAME}'
+else:
+    # Local storage (default)
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+
+# GCP Credentials
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+
+# AI Analysis Strategy
+if USE_CLOUD_VISION:
+    AI_ANALYSIS_BACKEND = 'ai_processing.backends.CloudVisionBackend'
+else:
+    AI_ANALYSIS_BACKEND = 'ai_processing.backends.LocalClipBackend'
+
+# Logo Detection Configuration
+LOGO_DETECTION_CONFIG = {
+    'confidence_threshold': float(os.getenv('LOGO_CONFIDENCE_THRESHOLD', '0.3')),
+    'enabled_brands': os.getenv('ENABLED_BRANDS', 'Apple,Google,Nike,Coca-Cola,McDonald,Amazon').split(','),
+    'use_cloud_vision': USE_CLOUD_VISION,
+}
+
+# =============================================================================
+# Kubernetes and Container Configuration
+# =============================================================================
+
+# Update service URLs for K8s deployment
+if os.getenv('KUBERNETES_SERVICE_HOST'):
+    # Running in Kubernetes
+    REDIS_HOST = os.getenv('REDIS_SERVICE_HOST', 'redis-service')
+    REDIS_PORT = int(os.getenv('REDIS_SERVICE_PORT', '6379'))
+    
+    # Update Celery broker for K8s
+    CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+    CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+    
+    # Update channels for K8s
+    CHANNEL_LAYERS["default"]["CONFIG"]["hosts"] = [(REDIS_HOST, REDIS_PORT)]
+    
+    # Update database host for K8s
+    DATABASES["default"]["HOST"] = os.getenv("DB_HOST", "postgres-service")
+    
+    # Update CORS for K8s ingress
+    CORS_ALLOWED_ORIGINS.extend([
+        f"http://{os.getenv('INGRESS_HOST', 'localhost')}",
+        f"https://{os.getenv('INGRESS_HOST', 'localhost')}",
+    ])
+
+# =============================================================================
+# Production Security Settings
+# =============================================================================
+
+# Update secret key from environment in production
+if not DEBUG:
+    SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', SECRET_KEY)
+    
+    # Ensure security settings for production
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    
+    # Only enable cloud features in production/K8s
+    if os.getenv('KUBERNETES_SERVICE_HOST') or os.getenv('USE_CLOUD_SERVICES'):
+        USE_CLOUD_VISION = True
+        USE_CLOUD_STORAGE = True

@@ -4,4 +4,6 @@ __pycache__
 *.sublime-*
 def/ignore
 postgres_data
-media
+media/*
+!media/.gitkeep
+media-analyzer-src.tar.gz

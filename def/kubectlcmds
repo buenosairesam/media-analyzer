@@ -1,0 +1,63 @@
+# Kubernetes Commands for Media Analyzer Deployment
+
+# Deploy application to KIND cluster
+kubectl apply -k k8s/overlays/development
+
+# Check pod deployment status
+kubectl get pods -n media-analyzer
+
+# List available namespaces
+kubectl get namespaces
+
+# Check all resources in default namespace (if namespace wasn't created)
+kubectl get all
+
+# Apply namespace specifically if needed
+kubectl apply -f k8s/base/namespace.yaml
+
+# Check deployment status across all namespaces
+kubectl get pods --all-namespaces
+
+# Check specific deployments
+kubectl get deployments -n media-analyzer
+
+# Check services
+kubectl get services -n media-analyzer
+
+# Check persistent volumes and claims
+kubectl get pv,pvc -n media-analyzer
+
+# Get detailed pod information
+kubectl describe pods -n media-analyzer
+
+# Check logs for specific pods (replace <pod-name> with actual pod name)
+kubectl logs <pod-name> -n media-analyzer
+
+# Port forward to access application (replace <service-name> with actual service)
+kubectl port-forward -n media-analyzer service/<service-name> 8080:80
+
+# Scale deployments if needed
+kubectl scale deployment django-app --replicas=2 -n media-analyzer
+
+# Delete deployment to restart fresh
+kubectl delete -k k8s/overlays/development
+
+# Check ingress
+kubectl get ingress -n media-analyzer
+
+# Clean up conflicting resources
+kubectl delete ingress media-analyzer-ingress -n default
+
+# Wait for persistent volumes to finish terminating
+kubectl get pv,pvc -n media-analyzer
+
+# Check events for debugging
+kubectl get events -n media-analyzer --sort-by='.lastTimestamp'
+
+# Check why pods are pending
+kubectl describe pod <pod-name> -n media-analyzer | tail -20
+
+# Create required secrets for deployment
+kubectl create secret generic gcp-credentials --from-literal=credentials.json='{}' -n media-analyzer
+kubectl create secret generic django-secrets --from-literal=secret-key='dev-secret-key-for-local-testing' -n media-analyzer
+kubectl create secret generic postgres-secrets --from-literal=username='postgres' --from-literal=password='password' -n media-analyzer

@@ -43,14 +43,13 @@ class RTMPSourceAdapter(VideoSourceAdapter):
         try:
             self.update_stream_status(StreamStatus.STARTING)
             
-            # Create HLS output directory
-            hls_output_dir = Path(settings.MEDIA_ROOT) / 'hls' / str(self.stream.id)
-            hls_output_dir.mkdir(parents=True, exist_ok=True)
+            # Files go directly in media directory
+            media_dir = Path(settings.MEDIA_ROOT)
             
             # Build RTMP URL
             rtmp_port = getattr(settings, 'RTMP_PORT', 1935)
             rtmp_url = f"rtmp://localhost:{rtmp_port}/live/{self.stream.stream_key}"
-            playlist_path = str(hls_output_dir / 'playlist.m3u8')
+            playlist_path = str(media_dir / f'{self.stream.stream_key}.m3u8')
             
             # Start FFmpeg conversion
             self.process = ffmpeg_handler.rtmp_to_hls(rtmp_url, playlist_path)
@@ -84,8 +83,8 @@ class RTMPSourceAdapter(VideoSourceAdapter):
             return False
     
     def get_hls_output_path(self) -> str:
-        hls_output_dir = Path(settings.MEDIA_ROOT) / 'hls' / str(self.stream.id)
-        return str(hls_output_dir / 'playlist.m3u8')
+        media_dir = Path(settings.MEDIA_ROOT)
+        return str(media_dir / f'{self.stream.stream_key}.m3u8')
 
 
 class FileSourceAdapter(VideoSourceAdapter):
@@ -98,11 +97,10 @@ class FileSourceAdapter(VideoSourceAdapter):
             if not self.stream.source_file:
                 raise ValueError("No source file provided")
                 
-            # Create HLS output directory
-            hls_output_dir = Path(settings.MEDIA_ROOT) / 'hls' / str(self.stream.id)
-            hls_output_dir.mkdir(parents=True, exist_ok=True)
+            # Files go directly in media directory
+            media_dir = Path(settings.MEDIA_ROOT)
             
-            playlist_path = str(hls_output_dir / 'playlist.m3u8')
+            playlist_path = str(media_dir / f'{self.stream.stream_key}.m3u8')
             
             # Start FFmpeg conversion
             self.process = ffmpeg_handler.file_to_hls(self.stream.source_file.path, playlist_path)
@@ -123,8 +121,8 @@ class FileSourceAdapter(VideoSourceAdapter):
         return True
     
     def get_hls_output_path(self) -> str:
-        hls_output_dir = Path(settings.MEDIA_ROOT) / 'hls' / str(self.stream.id)
-        return str(hls_output_dir / 'playlist.m3u8')
+        media_dir = Path(settings.MEDIA_ROOT)
+        return str(media_dir / f'{self.stream.stream_key}.m3u8')
 
 
 class SourceAdapterFactory:

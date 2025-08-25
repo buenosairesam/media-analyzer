@@ -1,0 +1,31 @@
+In AWS, **Amazon RDS (Relational Database Service)** and **Amazon Aurora** are the main managed database services.
+The **Google Cloud Platform (GCP)** equivalents are:
+
+* **Amazon RDS ↔ Cloud SQL**
+
+  * AWS RDS supports PostgreSQL, MySQL, MariaDB, Oracle, and SQL Server.
+  * GCP Cloud SQL supports PostgreSQL, MySQL, and SQL Server.
+  * Both are fully managed relational databases with backups, scaling, and maintenance.
+
+* **Amazon Aurora ↔ Cloud SQL / AlloyDB**
+
+  * Aurora is a cloud-native relational database compatible with MySQL and PostgreSQL, offering better performance and replication.
+  * GCP has two options:
+
+    * **Cloud SQL** (for standard workloads).
+    * **AlloyDB for PostgreSQL** (for high performance, cloud-native PostgreSQL, closer to Aurora in positioning).
+
+* **Amazon DynamoDB ↔ Cloud Bigtable / Firestore**
+
+  * DynamoDB is a fully managed NoSQL database.
+  * In GCP, depending on the use case:
+
+    * **Cloud Bigtable** is used for large-scale, wide-column workloads.
+    * **Firestore** (and older Datastore) is used for document-based NoSQL apps.
+
+* **Amazon Redshift ↔ BigQuery**
+
+  * Redshift is AWS’s data warehouse.
+  * BigQuery is GCP’s serverless, highly scalable data warehouse.
+
+Would you like me to prepare a **side-by-side table** with AWS → GCP database service mappings for quick reference?

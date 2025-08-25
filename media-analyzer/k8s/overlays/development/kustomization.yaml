@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: media-analyzer
+
+resources:
+- ../../base
+
+images:
+- name: media-analyzer-backend
+  newName: ctlptl-registry:5000/media-analyzer-backend
+  newTag: latest
+- name: media-analyzer-frontend
+  newName: ctlptl-registry:5000/media-analyzer-frontend
+  newTag: latest
+- name: media-analyzer-nginx
+  newName: ctlptl-registry:5000/media-analyzer-nginx
+  newTag: latest

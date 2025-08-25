@@ -1,0 +1,13 @@
+# Using dynamic provisioning with local-path storage class
+# No need for PVs, just PVCs that will be auto-provisioned
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-pvc
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

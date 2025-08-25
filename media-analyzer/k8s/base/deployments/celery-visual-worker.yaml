@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-visual-worker
+  labels:
+    app: celery-visual-worker
+    component: backend
+    queue: visual-analysis
+spec:
+  replicas: 0  # DISABLED for demo - set to 1+ to enable visual analysis
+  selector:
+    matchLabels:
+      app: celery-visual-worker
+  template:
+    metadata:
+      labels:
+        app: celery-visual-worker
+        component: backend
+        queue: visual-analysis
+    spec:
+      containers:
+      - name: celery-visual-worker
+        image: media-analyzer-backend:latest
+        # DEDICATED QUEUE: Only process visual property analysis tasks
+        command: ["celery", "-A", "media_analyzer", "worker", "-l", "info", "-Q", "visual_analysis", "--concurrency=1"]
+        env:
+        - name: DEBUG
+          value: "false"
+        - name: DB_HOST
+          value: "postgres-service"
+        - name: DB_NAME
+          value: "media_analyzer"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: password
+        - name: REDIS_SERVICE_HOST
+          value: "redis-service"
+        - name: REDIS_SERVICE_PORT
+          value: "6379"
+        volumeMounts:
+        - name: media-storage
+          mountPath: /app/media
+        resources:
+          requests:
+            memory: "512Mi"  # Less memory needed for visual analysis
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: media-storage
+        persistentVolumeClaim:
+          claimName: media-pvc

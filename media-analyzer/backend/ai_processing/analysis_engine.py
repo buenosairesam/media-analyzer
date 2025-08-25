@@ -1,23 +1,27 @@
 import cv2
 import numpy as np
+import os
 from PIL import Image
 import logging
 from .adapters.object_detection import ObjectDetectionAdapterFactory
 from .adapters.logo_detection import LogoDetectionAdapterFactory
 from .adapters.text_detection import TextDetectionAdapterFactory
 from .adapters.motion_analysis import MotionAnalysisAdapterFactory
+from .execution_strategies.base import ExecutionStrategyFactory
 
 logger = logging.getLogger(__name__)
 
 
 class AnalysisEngine:
-    """Main analysis engine that orchestrates capability-specific adapters"""
+    """Main analysis engine that orchestrates capability-specific adapters with execution strategies"""
     
     def __init__(self):
         self.object_detector = None
         self.logo_detector = None
         self.text_detector = None
         self.motion_analyzer = None
+        self.execution_strategy = None
+        self._configure_execution_strategy()
         
     def configure_providers(self, provider_config):
         """Configure adapters based on provider settings"""
@@ -41,6 +45,34 @@ class AnalysisEngine:
                 provider_config['motion_analysis']
             )
     
+    def _configure_execution_strategy(self):
+        """Configure execution strategy from environment"""
+        strategy_type = os.getenv('AI_PROCESSING_MODE', 'local')
+        
+        strategy_configs = {
+            'local': lambda: ExecutionStrategyFactory.create('local'),
+            'remote_lan': lambda: ExecutionStrategyFactory.create(
+                'remote_lan',
+                worker_host=os.getenv('AI_WORKER_HOST'),
+                timeout=int(os.getenv('AI_WORKER_TIMEOUT', '30'))
+            ),
+            'cloud': lambda: ExecutionStrategyFactory.create('cloud')
+        }
+        
+        try:
+            if strategy_type in strategy_configs:
+                self.execution_strategy = strategy_configs[strategy_type]()
+            else:
+                logger.warning(f"Unknown strategy type {strategy_type}, falling back to local")
+                self.execution_strategy = strategy_configs['local']()
+                
+            logger.info(f"Configured execution strategy: {strategy_type}")
+            
+        except Exception as e:
+            logger.error(f"Failed to configure execution strategy: {e}")
+            # Fallback to local
+            self.execution_strategy = strategy_configs['local']()
+    
     def extract_frame_from_segment(self, segment_path, timestamp=None):
         """Extract frame from video segment"""
         try:
@@ -63,26 +95,66 @@ class AnalysisEngine:
             return None
     
     def analyze_frame(self, image, requested_analysis, confidence_threshold=0.5):
-        """Analyze a single frame using configured adapters"""
+        """Analyze a single frame using configured adapters and execution strategy"""
         results = {}
         
-        # Object detection
-        if 'object_detection' in requested_analysis and self.object_detector:
-            results['objects'] = self.object_detector.detect(image, confidence_threshold)
-            
-        # Logo detection  
-        if 'logo_detection' in requested_analysis and self.logo_detector:
-            results['logos'] = self.logo_detector.detect(image, confidence_threshold)
-            
-        # Text detection
-        if 'text_detection' in requested_analysis and self.text_detector:
-            results['text'] = self.text_detector.detect(image, confidence_threshold)
-            
+        # Adapter execution map
+        adapter_map = {
+            'object_detection': self.object_detector,
+            'logo_detection': self.logo_detector,
+            'text_detection': self.text_detector
+        }
+        
+        # Execute detection using strategy
+        for analysis_type in requested_analysis:
+            if analysis_type in adapter_map and adapter_map[analysis_type]:
+                detections = self.execution_strategy.execute_detection(
+                    adapter_map[analysis_type], 
+                    image, 
+                    confidence_threshold
+                )
+                
+                # Map to expected result format
+                result_key = {
+                    'object_detection': 'objects',
+                    'logo_detection': 'logos', 
+                    'text_detection': 'text'
+                }.get(analysis_type, analysis_type)
+                
+                results[result_key] = detections
+        
         # Visual properties (always computed locally)
         if 'visual_analysis' in requested_analysis:
             results['visual'] = self._analyze_visual_properties(image)
             
         return results
+    
+    def health_check(self):
+        """Check health of execution strategy and configured adapters"""
+        try:
+            strategy_info = self.execution_strategy.get_info()
+            
+            adapter_check = {
+                'object_detection': self.object_detector,
+                'logo_detection': self.logo_detector,
+                'text_detection': self.text_detector,
+                'motion_analysis': self.motion_analyzer
+            }
+            
+            configured_adapters = [name for name, adapter in adapter_check.items() if adapter]
+            
+            return {
+                'execution_strategy': strategy_info,
+                'adapters_configured': configured_adapters,
+                'strategy_available': self.execution_strategy.is_available()
+            }
+        except Exception as e:
+            return {
+                'error': str(e),
+                'execution_strategy': None,
+                'adapters_configured': [],
+                'strategy_available': False
+            }
     
     def analyze_video_segment(self, segment_path, requested_analysis):
         """Analyze video segment for temporal features"""

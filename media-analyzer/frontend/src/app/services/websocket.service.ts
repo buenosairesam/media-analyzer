@@ -20,7 +20,8 @@ export class WebsocketService {
       return;
     }
 
-    const wsUrl = `ws://localhost:8000/ws/stream/${streamId}/`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/stream/${streamId}/`;
     console.log('Connecting to WebSocket:', wsUrl);
     
     this.socket = new WebSocket(wsUrl);

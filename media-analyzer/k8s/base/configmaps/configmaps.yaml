@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  use-cloud-vision: "false"  # Set to "true" for GCP Cloud Vision (paid)
+  use-cloud-storage: "true"   # FREE: 5GB GCS storage (62MB cycling fits easily)
+  logo-confidence-threshold: "0.3"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-config
+data:
+  project-id: "media-analyzer-demo"  # Replace with your GCP project ID
