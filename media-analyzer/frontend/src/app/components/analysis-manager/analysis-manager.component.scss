@@ -1,0 +1,121 @@
+.analysis-manager {
+  padding: 20px;
+}
+
+.analysis-manager h2 {
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.description {
+  color: #666;
+  margin-bottom: 20px;
+  font-style: italic;
+}
+
+.manager-content {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  background: #fafafa;
+}
+
+.analysis-features {
+  margin-bottom: 25px;
+}
+
+.feature-option {
+  margin-bottom: 15px;
+}
+
+.feature-option.available .checkbox-container {
+  cursor: pointer;
+  border-color: #28a745;
+  background: white;
+}
+
+.feature-option.unavailable .checkbox-container {
+  cursor: not-allowed;
+  border-color: #ddd;
+  background: #f8f8f8;
+  opacity: 0.6;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.checkbox-container:hover.available {
+  border-color: #007bff;
+  background: #f8f9ff;
+}
+
+.checkbox-container input[type="checkbox"] {
+  margin-right: 12px;
+}
+
+.checkbox-container input[type="checkbox"]:disabled {
+  opacity: 0.5;
+}
+
+.checkbox-checkmark {
+  margin-right: 12px;
+}
+
+.feature-details {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.feature-label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.feature-description {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.feature-status {
+  margin-left: 12px;
+}
+
+.coming-soon {
+  background: #ffc107;
+  color: #333;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75em;
+  font-weight: 500;
+}
+
+.status-section {
+  border-top: 1px solid #ddd;
+  padding-top: 20px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.status-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.status-value {
+  color: #333;
+  font-weight: 600;
+}

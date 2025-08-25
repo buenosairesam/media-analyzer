@@ -1,0 +1,45 @@
+<div class="analysis-manager">
+  <h2>🔍 Analysis Manager</h2>
+  <p class="description">Configure AI analysis features for video streams</p>
+  
+  <div class="manager-content">
+    <div class="analysis-features">
+      <div class="feature-option" *ngFor="let feature of analysisFeatures" 
+           [class.available]="feature.available"
+           [class.unavailable]="!feature.available">
+        <label class="checkbox-container">
+          <input 
+            type="checkbox" 
+            [checked]="feature.enabled"
+            [disabled]="!feature.available"
+            (change)="onFeatureToggle(feature)">
+          <span class="checkbox-checkmark"></span>
+          <div class="feature-details">
+            <span class="feature-label">{{ feature.label }}</span>
+            <span class="feature-description">{{ feature.description }}</span>
+          </div>
+          <div class="feature-status" *ngIf="!feature.available">
+            <span class="coming-soon">Coming Soon</span>
+          </div>
+        </label>
+      </div>
+    </div>
+    
+    <div class="status-section">
+      <div class="status-item">
+        <span class="status-label">Active Features:</span>
+        <span class="status-value">{{ activeFeatures }} / {{ availableFeatures }}</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">Processing Load:</span>
+        <span class="status-value">{{ activeFeatures > 0 ? 'Light' : 'None' }}</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">Estimated FPS:</span>
+        <span class="status-value">{{ activeFeatures > 0 ? '30 FPS' : 'N/A' }}</span>
+      </div>
+    </div>
+  </div>
+</div>

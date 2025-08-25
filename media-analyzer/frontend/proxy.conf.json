@@ -1,0 +1,23 @@
+{
+  "/api/**": {
+    "target": "http://localhost:8000",
+    "secure": false,
+    "logLevel": "debug",
+    "changeOrigin": true
+  },
+  "/streaming/**": {
+    "target": "http://localhost:8081",
+    "secure": false,
+    "logLevel": "debug",
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/streaming": ""
+    }
+  },
+  "/ws/**": {
+    "target": "http://localhost:8000",
+    "secure": false,
+    "ws": true,
+    "changeOrigin": true
+  }
+}

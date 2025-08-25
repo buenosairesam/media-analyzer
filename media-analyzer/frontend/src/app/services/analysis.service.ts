@@ -10,7 +10,8 @@ export class AnalysisService {
   private currentDetections = new BehaviorSubject<DetectionResult[]>([]);
   private currentVisual = new BehaviorSubject<VisualAnalysis | null>(null);
   private recentAnalyses = new BehaviorSubject<Analysis[]>([]);
-  private streamStartTime: Date | null = null;
+  private currentSessionId: string | null = null;
+  private connectedStreamKey: string | null = null;
   
   public detections$ = this.currentDetections.asObservable();
   public visual$ = this.currentVisual.asObservable();
@@ -23,34 +24,42 @@ export class AnalysisService {
     });
   }
 
-  connectToStream(streamId: string) {
-    this.streamStartTime = new Date();
-    this.websocketService.subscribe(streamId);
+  connectToStream(streamKey: string, sessionId?: string) {
+    // Set current session for filtering
+    this.currentSessionId = sessionId || `session_${Date.now()}`;
+    this.connectedStreamKey = streamKey;
+    
+    // Clear existing analysis data when starting new session
+    this.clearAnalysis();
+    
+    // Connect to WebSocket with session ID
+    this.websocketService.subscribe(streamKey, this.currentSessionId);
+    
+    console.log('Connected to stream analysis:', {
+      streamKey,
+      sessionId: this.currentSessionId
+    });
   }
 
   disconnect() {
     this.websocketService.unsubscribe();
     this.websocketService.disconnect();
-    this.currentDetections.next([]);
-    this.currentVisual.next(null);
-    this.streamStartTime = null;
+    this.clearAnalysis();
+    this.currentSessionId = null;
+    this.connectedStreamKey = null;
   }
 
   private handleAnalysisUpdate(analysis: Analysis) {
-    console.log('Received analysis update:', analysis);
-    
-    // Filter out analysis from before stream started (with 30 second buffer for recent analysis)
-    if (this.streamStartTime && analysis.timestamp) {
-      const analysisTime = new Date(analysis.timestamp);
-      const bufferTime = new Date(this.streamStartTime.getTime() - 30000); // 30 seconds before stream start
-      if (analysisTime < bufferTime) {
-        console.log('Ignoring old analysis from before stream start:', {
-          analysisTime: analysisTime.toISOString(),
-          streamStart: this.streamStartTime.toISOString()
-        });
-        return;
-      }
+    // Only process analysis if we have an active session
+    if (!this.currentSessionId) {
+      return;
     }
+    
+    // Filter by session ID - only process analysis for current session
+    if (analysis.session_id && analysis.session_id !== this.currentSessionId) {
+      return;
+    }
+    
     
     // Update recent analyses list
     const current = this.recentAnalyses.value;
@@ -66,11 +75,6 @@ export class AnalysisService {
       this.currentVisual.next(analysis.visual);
     }
     
-    console.log('Analysis update:', {
-      detections: detections.length,
-      visual: !!analysis.visual,
-      timestamp: analysis.timestamp
-    });
   }
 
   getCurrentDetections(): DetectionResult[] {
@@ -89,5 +93,13 @@ export class AnalysisService {
     this.currentDetections.next([]);
     this.currentVisual.next(null);
     this.recentAnalyses.next([]);
+  }
+
+  getCurrentSessionId(): string | null {
+    return this.currentSessionId;
+  }
+
+  isConnectedToStream(streamKey: string): boolean {
+    return this.connectedStreamKey === streamKey && !!this.currentSessionId;
   }
 }

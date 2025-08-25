@@ -68,6 +68,21 @@ class CLIPLogoDetectionAdapter(DetectionAdapter):
             self.model = CLIPModel.from_pretrained(self.model_identifier)
             self.processor = CLIPProcessor.from_pretrained(self.model_identifier)
     
+    def cleanup(self):
+        """Release model and processor memory"""
+        if self.model:
+            del self.model
+            self.model = None
+        if self.processor:
+            del self.processor
+            self.processor = None
+        
+        import torch
+        import gc
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+    
     def detect(self, image, confidence_threshold=0.5):
         try:
             self._load_model()
@@ -97,6 +112,14 @@ class CLIPLogoDetectionAdapter(DetectionAdapter):
             with torch.no_grad():
                 outputs = self.model(**inputs)
                 probs = outputs.logits_per_image.softmax(dim=1)
+                
+                # Clear GPU cache immediately after inference
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                
+                # Clear input tensors
+                del inputs
+                del outputs
             
             results = []
             for i, prob in enumerate(probs[0][:-1]):
@@ -108,11 +131,18 @@ class CLIPLogoDetectionAdapter(DetectionAdapter):
                         'bbox': {'x': 0, 'y': 0, 'width': 1, 'height': 1}  # Full frame for CLIP
                     })
             
+            # Clear probability tensors
+            del probs
+            
             return sorted(results, key=lambda x: x['confidence'], reverse=True)[:5]
             
         except Exception as e:
             logger.error(f"CLIP logo detection error: {e}")
             return []
+        finally:
+            # Force garbage collection after processing
+            import gc
+            gc.collect()
 
 
 class LogoDetectionAdapterFactory(AdapterFactory):

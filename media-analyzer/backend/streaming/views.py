@@ -3,6 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404
 from django.conf import settings
+from django.core.cache import cache
 from .models import VideoStream, StreamStatus
 from .source_adapters import SourceAdapterFactory
 from ai_processing.processors.video_analyzer import VideoAnalyzer
@@ -140,11 +141,15 @@ def serve_hls_file(request, filename):
             logger.info(f"Parsed stream_key: {stream_key} from filename: {filename}")
             
             if stream_key:
+                # Get session ID from cache
+                session_id = cache.get(f"stream_session_{stream_key}")
+                logger.info(f"Retrieved session_id: {session_id} for stream: {stream_key}")
+                
                 # Queue for analysis
                 logger.info(f"Attempting to queue analysis for {filename}")
                 analyzer = VideoAnalyzer()
-                analyzer.queue_segment_analysis(stream_key, file_path)
-                logger.info(f"Queued segment for analysis: {filename} (stream: {stream_key})")
+                analyzer.queue_segment_analysis(stream_key, file_path, session_id)
+                logger.info(f"Queued segment for analysis: {filename} (stream: {stream_key}, session: {session_id})")
             else:
                 logger.warning(f"No stream_key extracted from {filename}")
             
@@ -267,4 +272,29 @@ def start_webcam_stream(request):
         
     except Exception as e:
         logger.error(f"Error starting webcam stream: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_stream(request, stream_id):
+    """Delete a stream (only if inactive)"""
+    try:
+        stream = get_object_or_404(VideoStream, id=stream_id)
+        
+        # Cannot delete active streams
+        if stream.status == StreamStatus.ACTIVE:
+            return JsonResponse({
+                'error': f'Cannot delete active stream: {stream.name}. Stop it first.'
+            }, status=400)
+        
+        # Delete the stream
+        stream_name = stream.name
+        stream.delete()
+        
+        logger.info(f"Deleted stream: {stream_name} (ID: {stream_id})")
+        return JsonResponse({'message': f'Stream "{stream_name}" deleted successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting stream {stream_id}: {e}")
         return JsonResponse({'error': str(e)}, status=500)

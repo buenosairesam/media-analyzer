@@ -5,7 +5,7 @@ from ai_processing.models import VideoAnalysis, AnalysisProvider, Brand
 
 @require_http_methods(["GET"])
 def stream_analysis(request, stream_id):
-    analyses = VideoAnalysis.objects.filter(stream_id=stream_id).order_by('-timestamp')
+    analyses = VideoAnalysis.objects.filter(stream_key=stream_id).order_by('-timestamp')
     return JsonResponse({'results': [a.to_dict() for a in analyses]})
 
 

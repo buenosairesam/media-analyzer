@@ -1,0 +1,41 @@
+<div class="execution-manager">
+  <h2>⚡ Execution Manager</h2>
+  <p class="description">Choose where AI processing will be executed</p>
+  
+  <div class="manager-content disabled">
+    <div class="execution-modes">
+      <div class="mode-option" *ngFor="let mode of executionModes">
+        <label class="radio-container">
+          <input 
+            type="radio" 
+            name="executionMode" 
+            [value]="mode.id"
+            [(ngModel)]="selectedExecution"
+            (change)="onExecutionModeChange(mode.id)"
+            disabled>
+          <span class="radio-checkmark"></span>
+          <div class="mode-details">
+            <span class="mode-label">{{ mode.label }}</span>
+            <span class="mode-description">{{ mode.description }}</span>
+          </div>
+        </label>
+      </div>
+    </div>
+    
+    <div class="status-section">
+      <div class="status-item">
+        <span class="status-label">Current Mode:</span>
+        <span class="status-value">{{ selectedExecution | titlecase }}</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">Available Workers:</span>
+        <span class="status-value">1 Local</span>
+      </div>
+      
+      <div class="feature-badge">
+        Coming Soon
+      </div>
+    </div>
+  </div>
+</div>

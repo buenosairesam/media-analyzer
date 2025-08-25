@@ -31,4 +31,8 @@ export class StreamService {
   stopStream(streamKey: string): Observable<{message: string}> {
     return this.http.post<{message: string}>(`${this.apiUrl}/streams/${streamKey}/stop/`, {});
   }
+
+  deleteStream(streamId: number): Observable<{message: string}> {
+    return this.http.delete<{message: string}>(`${this.apiUrl}/streams/${streamId}/`);
+  }
 }

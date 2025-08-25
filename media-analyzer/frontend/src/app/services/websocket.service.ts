@@ -35,7 +35,6 @@ export class WebsocketService {
     this.socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('WebSocket message:', data);
         
         if (data.type === 'analysis_update') {
           this.analysisSubject.next(data.analysis);
@@ -43,6 +42,9 @@ export class WebsocketService {
           data.analyses.forEach((analysis: Analysis) => {
             this.analysisSubject.next(analysis);
           });
+        } else if (data.type === 'pong') {
+        } else {
+          console.log('❓ Unknown message type:', data.type);
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -72,6 +74,7 @@ export class WebsocketService {
   send(message: any) {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
+    } else {
     }
   }
 
@@ -82,10 +85,29 @@ export class WebsocketService {
     });
   }
   
-  subscribe(streamId: string) {
+  subscribe(streamId: string, sessionId?: string) {
     this.currentStreamId = streamId;
     this.connect();
-    this.send({ type: 'subscribe', stream_id: streamId });
+    
+    // Wait for connection to be open before subscribing
+    const message: any = { type: 'subscribe', stream_id: streamId };
+    if (sessionId) {
+      message.session_id = sessionId;
+    }
+    
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.send(message);
+    } else {
+      // Wait for WebSocket to open, then subscribe
+      const checkAndSend = () => {
+        if (this.socket?.readyState === WebSocket.OPEN) {
+          this.send(message);
+        } else {
+          setTimeout(checkAndSend, 100);
+        }
+      };
+      setTimeout(checkAndSend, 100);
+    }
   }
   
   unsubscribe() {

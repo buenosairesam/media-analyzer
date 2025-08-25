@@ -113,36 +113,59 @@ class AnalysisEngine:
         """Analyze a single frame using configured adapters and execution strategy"""
         results = {}
         
-        # Adapter execution map
-        adapter_map = {
-            'object_detection': self.object_detector,
-            'logo_detection': self.logo_detector,
-            'text_detection': self.text_detector
-        }
-        
-        # Execute detection using strategy
-        for analysis_type in requested_analysis:
-            if analysis_type in adapter_map and adapter_map[analysis_type]:
-                detections = self.execution_strategy.execute_detection(
-                    adapter_map[analysis_type], 
-                    image, 
-                    confidence_threshold
-                )
-                
-                # Map to expected result format
-                result_key = {
-                    'object_detection': 'objects',
-                    'logo_detection': 'logos', 
-                    'text_detection': 'text'
-                }.get(analysis_type, analysis_type)
-                
-                results[result_key] = detections
-        
-        # Visual properties (always computed locally)
-        if 'visual_analysis' in requested_analysis:
-            results['visual'] = self._analyze_visual_properties(image)
+        try:
+            # Adapter execution map
+            adapter_map = {
+                'object_detection': self.object_detector,
+                'logo_detection': self.logo_detector,
+                'text_detection': self.text_detector
+            }
             
-        return results
+            # Execute detection using strategy
+            for analysis_type in requested_analysis:
+                if analysis_type in adapter_map and adapter_map[analysis_type]:
+                    detections = self.execution_strategy.execute_detection(
+                        adapter_map[analysis_type], 
+                        image, 
+                        confidence_threshold
+                    )
+                    
+                    # Map to expected result format
+                    result_key = {
+                        'object_detection': 'objects',
+                        'logo_detection': 'logos', 
+                        'text_detection': 'text'
+                    }.get(analysis_type, analysis_type)
+                    
+                    results[result_key] = detections
+            
+            # Visual properties (always computed locally)
+            if 'visual_analysis' in requested_analysis:
+                results['visual'] = self._analyze_visual_properties(image)
+                
+            return results
+        finally:
+            # Clean up models after each analysis to prevent memory leaks
+            self.cleanup()
+    
+    def cleanup(self):
+        """Clean up all models and release memory"""
+        try:
+            if self.logo_detector and hasattr(self.logo_detector, 'cleanup'):
+                self.logo_detector.cleanup()
+            if self.object_detector and hasattr(self.object_detector, 'cleanup'):
+                self.object_detector.cleanup()
+            if self.text_detector and hasattr(self.text_detector, 'cleanup'):
+                self.text_detector.cleanup()
+            if self.motion_analyzer and hasattr(self.motion_analyzer, 'cleanup'):
+                self.motion_analyzer.cleanup()
+                
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+        except Exception as e:
+            logger.error(f"Cleanup error: {e}")
     
     def health_check(self):
         """Check health of execution strategy and configured adapters"""

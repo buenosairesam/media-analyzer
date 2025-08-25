@@ -14,7 +14,7 @@
   
   .main-content {
     display: grid;
-    grid-template-columns: 350px 1fr;
+    grid-template-columns: 450px 1fr;
     grid-template-rows: auto auto;
     grid-template-areas: 
       "controls viewer"
@@ -39,6 +39,14 @@
     background: #f8f9fa;
     padding: 1.5rem;
     border-radius: 8px;
+    
+    > * {
+      margin-bottom: 1.5rem;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
   }
   
   .viewer-section {
