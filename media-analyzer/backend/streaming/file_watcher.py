@@ -20,7 +20,13 @@ class HLSFileWatcher:
         
         # Create a persistent directory for analysis segments
         self.analysis_dir = self.media_dir / 'analysis_segments'
-        self.analysis_dir.mkdir(exist_ok=True)
+        try:
+            self.analysis_dir.mkdir(exist_ok=True)
+        except PermissionError:
+            logger.warning(f"File watcher: Cannot create {self.analysis_dir}, using temp directory")
+            import tempfile
+            self.analysis_dir = Path(tempfile.mkdtemp(prefix='analysis_segments_'))
+            logger.info(f"File watcher: Using temporary analysis directory: {self.analysis_dir}")
         
         # Track copied files for cleanup
         self.copied_files = set()
