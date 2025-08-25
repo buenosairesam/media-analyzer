@@ -1,0 +1,88 @@
+You have a few options to speed up frontend development while keeping the backend services
+  running:
+
+  Option 1: Hybrid Development (Recommended)
+
+  Run frontend locally, backend in Docker:
+
+  # Terminal 1: Start backend services only
+  docker compose up postgres redis backend celery-logo celery-default file-watcher nginx-rtmp
+
+  # Terminal 2: Run Angular dev server locally
+  cd frontend && ng serve --host 0.0.0.0 --port 4200
+
+  Pros: Hot reload, fast rebuilds, best developer experience
+  Cons: Need to manage CORS and proxy config
+
+  Option 2: Docker Bind Mount + Manual Rebuild
+
+  Keep frontend container but rebuild manually:
+
+  # Build frontend assets locally
+  cd frontend && ng build --watch
+
+  # Or for production build
+  cd frontend && ng build --configuration production
+
+  # Assets go to dist/ and can be volume mounted to nginx
+
+  Option 3: Frontend Container with Volume Mount
+
+  Modify docker-compose.yml for dev:
+
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    volumes:
+      - ./frontend/src:/app/src  # Mount source
+      - ./frontend/dist:/usr/share/nginx/html  # Mount build output
+    command: sh -c "ng build --watch & nginx -g 'daemon off;'"
+
+  Option 4: Live Reload in Container
+
+  Add this to your frontend Dockerfile development stage:
+
+  FROM node:18 AS development
+  WORKDIR /app
+  COPY package*.json ./
+  RUN npm ci
+  COPY . .
+  # Start both ng build --watch and nginx
+  CMD ["sh", "-c", "ng build --watch --output-path /usr/share/nginx/html & nginx -g 'daemon off;'"]
+
+  My Recommendation: Option 1
+
+  For your use case, I'd run:
+
+  # Keep backend running
+  docker compose up -d postgres redis backend celery-logo celery-default file-watcher nginx-rtmp
+
+  # Run frontend locally with proxy
+  cd frontend && ng serve --proxy-config proxy.conf.json
+
+  Create frontend/proxy.conf.json:
+  {
+    "/api/*": {
+      "target": "http://localhost:8000",
+      "secure": false,
+      "logLevel": "debug"
+    },
+    "/streaming/*": {
+      "target": "http://localhost:8000",
+      "secure": false
+    },
+    "/ws/*": {
+      "target": "http://localhost:8000",
+      "secure": false,
+      "ws": true
+    }
+  }
+
+  This gives you:
+  - ✅ Instant hot reload
+  - ✅ Fast TypeScript compilation
+  - ✅ Backend services running
+  - ✅ No container rebuilds
+
+  Would you like me to set up the proxy config for the hybrid approach?

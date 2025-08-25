@@ -188,4 +188,24 @@ export class StreamViewerComponent implements AfterViewInit, OnDestroy, OnChange
     const canvas = this.overlayElement.nativeElement;
     this.ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
+
+  clearStream() {
+    const video = this.videoElement.nativeElement;
+    
+    // Stop and clear HLS
+    if (this.hls) {
+      this.hls.destroy();
+      this.hls = undefined;
+    }
+    
+    // Clear video source and stop playback
+    video.src = '';
+    video.srcObject = null;
+    video.load(); // Reset video element
+    
+    // Clear overlay
+    this.clearOverlay();
+    
+    console.log('Stream cleared');
+  }
 }

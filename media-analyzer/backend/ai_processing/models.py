@@ -2,6 +2,15 @@ from django.db import models
 import uuid
 
 
+def get_default_confidence_threshold():
+    """Get default confidence threshold from settings"""
+    try:
+        from django.conf import settings
+        return settings.LOGO_DETECTION_CONFIG['confidence_threshold']
+    except:
+        return 0.6  # Fallback if settings not available
+
+
 class AnalysisProvider(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
@@ -28,20 +37,20 @@ class Brand(models.Model):
 
 class VideoAnalysis(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    stream_id = models.CharField(max_length=100)
+    stream_key = models.CharField(max_length=100)  # Use stream_key instead of stream_id
     segment_path = models.CharField(max_length=500)
     timestamp = models.DateTimeField(auto_now_add=True)
     processing_time = models.FloatField(null=True)
     provider = models.ForeignKey(AnalysisProvider, on_delete=models.CASCADE, null=True, blank=True)
     analysis_type = models.CharField(max_length=50)
-    confidence_threshold = models.FloatField(default=0.5)
+    confidence_threshold = models.FloatField(default=get_default_confidence_threshold)
     frame_timestamp = models.FloatField()
     external_request_id = models.CharField(max_length=200, null=True)
     
     def to_dict(self):
         return {
             'id': str(self.id),
-            'stream_id': self.stream_id,
+            'stream_key': self.stream_key,
             'timestamp': self.timestamp.isoformat(),
             'processing_time': self.processing_time,
             'analysis_type': self.analysis_type,
@@ -53,7 +62,7 @@ class VideoAnalysis(models.Model):
     
     class Meta:
         indexes = [
-            models.Index(fields=['stream_id', 'timestamp']),
+            models.Index(fields=['stream_key', 'timestamp']),
             models.Index(fields=['analysis_type']),
         ]
 
@@ -128,7 +137,7 @@ class Brand(models.Model):
 
 class ProcessingQueue(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    stream_id = models.CharField(max_length=100)
+    stream_key = models.CharField(max_length=100)  # Use stream_key instead of stream_id
     segment_path = models.CharField(max_length=500)
     priority = models.IntegerField(default=0)
     status = models.CharField(max_length=20, choices=[
@@ -146,5 +155,5 @@ class ProcessingQueue(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['status', 'priority']),
-            models.Index(fields=['stream_id']),
+            models.Index(fields=['stream_key']),
         ]

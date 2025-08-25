@@ -14,25 +14,43 @@
   
   .main-content {
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: 350px 1fr;
+    grid-template-rows: auto auto;
+    grid-template-areas: 
+      "controls viewer"
+      "controls analysis";
     gap: 2rem;
     max-width: 1400px;
     margin: 0 auto;
     
     @media (max-width: 768px) {
       grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto;
+      grid-template-areas: 
+        "controls"
+        "viewer"
+        "analysis";
       gap: 1rem;
     }
   }
   
   .controls-section {
+    grid-area: controls;
     background: #f8f9fa;
     padding: 1.5rem;
     border-radius: 8px;
   }
   
   .viewer-section {
+    grid-area: viewer;
     background: #000;
+    padding: 1rem;
+    border-radius: 8px;
+  }
+  
+  .analysis-section {
+    grid-area: analysis;
+    background: #f8f9fa;
     padding: 1rem;
     border-radius: 8px;
   }

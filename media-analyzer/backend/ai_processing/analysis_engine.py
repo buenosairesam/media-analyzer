@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 class AnalysisEngine:
     """Main analysis engine that orchestrates capability-specific adapters with execution strategies"""
     
+    _strategy_logged = False
+    
     def __init__(self):
         self.object_detector = None
         self.logo_detector = None
@@ -66,7 +68,9 @@ class AnalysisEngine:
                 logger.warning(f"Unknown strategy type {strategy_type}, falling back to local")
                 self.execution_strategy = strategy_configs['local']()
                 
-            logger.info(f"Configured execution strategy: {strategy_type}")
+            if not AnalysisEngine._strategy_logged:
+                logger.info(f"Configured execution strategy: {strategy_type}")
+                AnalysisEngine._strategy_logged = True
             
         except Exception as e:
             logger.error(f"Failed to configure execution strategy: {e}")
@@ -76,8 +80,17 @@ class AnalysisEngine:
     def extract_frame_from_segment(self, segment_path, timestamp=None):
         """Extract frame from video segment"""
         try:
+            import os
+            logger.debug(f"Attempting to extract frame from: {segment_path}")
+            
+            if not os.path.exists(segment_path):
+                logger.error(f"Segment file does not exist: {segment_path}")
+                return None
+            
             cap = cv2.VideoCapture(segment_path)
+            
             if not cap.isOpened():
+                logger.error(f"OpenCV failed to open: {segment_path}")
                 return None
                 
             # For TS segments, seeking is problematic, just read first frame
@@ -88,6 +101,8 @@ class AnalysisEngine:
             if ret:
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 return Image.fromarray(frame_rgb)
+            else:
+                logger.error(f"Failed to read frame from {segment_path}")
             return None
                 
         except Exception as e:

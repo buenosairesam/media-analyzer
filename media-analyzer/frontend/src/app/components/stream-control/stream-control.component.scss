@@ -1,0 +1,134 @@
+.stream-control {
+  padding: 20px;
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #ddd;
+}
+
+.tab {
+  padding: 12px 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  margin-right: 8px;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  background: #f8f9fa;
+}
+
+.tab.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
+  background: #f8f9fa;
+}
+
+.tab-content {
+  margin-top: 20px;
+}
+
+.webcam-section, .rtmp-section {
+  min-height: 300px;
+}
+
+.description {
+  color: #666;
+  margin-bottom: 15px;
+  font-style: italic;
+}
+
+.btn-webcam {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.btn-webcam:hover {
+  background: #45a049;
+}
+
+.create-stream {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.input {
+  padding: 8px;
+  margin-right: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 200px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.btn-primary { background: #007bff; color: white; }
+.btn-success { background: #28a745; color: white; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-info { background: #17a2b8; color: white; }
+
+.btn:disabled {
+  background: #6c757d !important;
+  cursor: not-allowed;
+}
+
+.streams-list {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.stream-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.stream-item:last-child {
+  border-bottom: none;
+}
+
+.stream-info h4 {
+  margin: 0 0 8px 0;
+}
+
+.source-type {
+  font-weight: normal;
+  font-size: 0.8em;
+  color: #666;
+}
+
+.status-active { color: #28a745; font-weight: bold; }
+.status-inactive { color: #6c757d; }
+.status-starting { color: #ffc107; }
+.status-stopping { color: #fd7e14; }
+.status-error { color: #dc3545; font-weight: bold; }
+
+code {
+  background: #f8f9fa;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}

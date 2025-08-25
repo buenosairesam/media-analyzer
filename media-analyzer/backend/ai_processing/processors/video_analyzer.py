@@ -50,12 +50,12 @@ class VideoAnalyzer:
         except Exception as e:
             logger.error(f"Error setting up providers: {e}")
     
-    def queue_segment_analysis(self, stream_id, segment_path):
+    def queue_segment_analysis(self, stream_key, segment_path):
         """Queue video segment for analysis"""
         try:
             # Check if already queued
             existing = ProcessingQueue.objects.filter(
-                stream_id=stream_id,
+                stream_key=stream_key,
                 segment_path=segment_path,
                 status__in=['pending', 'processing']
             ).exists()
@@ -66,14 +66,14 @@ class VideoAnalyzer:
             
             # Create queue item
             queue_item = ProcessingQueue.objects.create(
-                stream_id=stream_id,
+                stream_key=stream_key,
                 segment_path=segment_path,
                 analysis_types=['logo_detection'],
                 priority=1
             )
             
             # Trigger async processing
-            process_video_segment.delay(stream_id, segment_path)
+            process_video_segment.delay(stream_key, segment_path)
             
             logger.info(f"Queued segment for analysis: {segment_path}")
             return True

@@ -18,19 +18,20 @@ video structure
 			keyboards (early days)
 			music vs coding (the gap gets wider)
 			recurrent back to basics
+		behind the scenes
+			the setup
+			deskmeter
+			timelapses/ffmpeg
 	demo
 		phase 1
 		phase 2
 		phase 3
 	extras
-		behind the scenes
-			the setup
-			deskmeter
-			timelapses/ffmpeg
-		make your own path
+		opinions
 			bootcamps
 			pimp-up-your-profile new trend
-		for seenka
+			show the current state of my use of AI tools
+		motivations
 			im not in it (just) for the money
 			video processing is my passion (?
 

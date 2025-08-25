@@ -1,20 +1,8 @@
 import { Component, EventEmitter, Output } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { environment } from '../../../environments/environment';
-
-interface Stream {
-  id: number;
-  name: string;
-  source_type: string;
-  processing_mode: string;
-  status: string;
-  stream_key: string;
-  hls_playlist_url: string | null;
-  rtmp_ingest_url: string;
-  created_at: string;
-}
+import { StreamService } from '../../services/stream.service';
+import { Stream } from '../../models/stream';
 
 @Component({
   selector: 'app-stream-control',
@@ -25,17 +13,19 @@ interface Stream {
 })
 export class StreamControlComponent {
   @Output() streamSelected = new EventEmitter<string>();
+  @Output() streamStopped = new EventEmitter<void>();
   
   streams: Stream[] = [];
   newStreamName = '';
   selectedStream: Stream | null = null;
+  activeTab: 'rtmp' | 'webcam' = 'webcam';
 
-  constructor(private http: HttpClient) {
+  constructor(private streamService: StreamService) {
     this.loadStreams();
   }
 
   loadStreams() {
-    this.http.get<{streams: Stream[]}>(`${environment.apiUrl}/streams/`).subscribe({
+    this.streamService.getStreams().subscribe({
       next: (response) => {
         this.streams = response.streams;
       },
@@ -46,7 +36,7 @@ export class StreamControlComponent {
   createStream() {
     if (!this.newStreamName) return;
 
-    this.http.post<Stream>(`${environment.apiUrl}/streams/create/`, {
+    this.streamService.createStream({
       name: this.newStreamName,
       source_type: 'rtmp',
       processing_mode: 'live'
@@ -60,8 +50,12 @@ export class StreamControlComponent {
   }
 
   startStream(stream: Stream) {
-    this.http.post(`${environment.apiUrl}/streams/${stream.id}/start/`, {}).subscribe({
-      next: () => {
+    this.streamService.startStream(stream.stream_key).subscribe({
+      next: (response) => {
+        console.log('Stream started, HLS URL:', response.hls_playlist_url);
+        // Emit the stream selection immediately with the HLS URL from response
+        this.streamSelected.emit(response.hls_playlist_url);
+        // Then reload streams to get updated status
         this.loadStreams();
       },
       error: (error) => console.error('Error starting stream:', error)
@@ -69,12 +63,54 @@ export class StreamControlComponent {
   }
 
   stopStream(stream: Stream) {
-    this.http.post(`${environment.apiUrl}/streams/${stream.id}/stop/`, {}).subscribe({
+    this.streamService.stopStream(stream.stream_key).subscribe({
       next: () => {
         this.loadStreams();
+        // Emit event to clear the player
+        this.streamStopped.emit();
       },
       error: (error) => console.error('Error stopping stream:', error)
     });
+  }
+
+  startWebcam() {
+    this.streamService.startWebcamStream().subscribe({
+      next: (stream) => {
+        this.loadStreams();
+        // Backend now waits for HLS to be ready, so we can directly select
+        this.selectStream(stream);
+      },
+      error: (error) => {
+        console.error('Error starting webcam:', error);
+        if (error.status === 409) {
+          const activeStreamKey = error.error.active_stream_key;
+          if (activeStreamKey) {
+            console.log(`Stopping active stream ${activeStreamKey} before retrying webcam`);
+            this.streamService.stopStream(activeStreamKey).subscribe({
+              next: () => this.startWebcam(),
+              error: (stopError) => {
+                console.error('Error stopping active stream:', stopError);
+                alert(`Cannot start webcam: ${error.error.error}`);
+              }
+            });
+          } else {
+            alert(`Cannot start webcam: ${error.error.error}`);
+          }
+        }
+      }
+    });
+  }
+
+  switchTab(tab: 'rtmp' | 'webcam') {
+    this.activeTab = tab;
+  }
+
+  get rtmpStreams() {
+    return this.streams.filter(stream => stream.source_type === 'rtmp');
+  }
+
+  get webcamStreams() {
+    return this.streams.filter(stream => stream.source_type === 'webcam');
   }
 
   selectStream(stream: Stream) {

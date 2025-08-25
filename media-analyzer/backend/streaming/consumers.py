@@ -11,44 +11,42 @@ class StreamAnalysisConsumer(AsyncWebsocketConsumer):
     """WebSocket consumer for real-time analysis updates"""
     
     async def connect(self):
-        self.stream_id = self.scope['url_route']['kwargs']['stream_id']
-        self.room_group_name = f'stream_{self.stream_id}'
-        
-        # Join stream group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        
+        # Initialize subscription set for dynamic stream groups
+        self.subscribed_streams = set()
         await self.accept()
-        logger.info(f"WebSocket connected for stream {self.stream_id}")
-        
-        # Send recent analysis results
-        await self.send_recent_analysis()
+        logger.info("WebSocket connected - ready to subscribe to streams")
     
     async def disconnect(self, close_code):
-        # Leave stream group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
-        logger.info(f"WebSocket disconnected for stream {self.stream_id}")
+        # Leave all subscribed stream groups
+        for stream_key in getattr(self, 'subscribed_streams', []):
+            await self.channel_layer.group_discard(f"stream_{stream_key}", self.channel_name)
+        logger.info("WebSocket disconnected")
     
     async def receive(self, text_data):
         """Handle incoming WebSocket messages"""
         try:
             data = json.loads(text_data)
             message_type = data.get('type')
-            
+
             if message_type == 'ping':
                 await self.send(text_data=json.dumps({
                     'type': 'pong',
                     'timestamp': data.get('timestamp')
                 }))
+            elif message_type == 'subscribe':
+                stream_key = data.get('stream_id')  # Frontend still sends 'stream_id' but it's actually stream_key
+                if stream_key and stream_key not in self.subscribed_streams:
+                    self.subscribed_streams.add(stream_key)
+                    await self.channel_layer.group_add(f"stream_{stream_key}", self.channel_name)
+                    await self.send_recent_analysis(stream_key)
+            elif message_type == 'unsubscribe':
+                stream_key = data.get('stream_id')  # Frontend still sends 'stream_id' but it's actually stream_key
+                if stream_key and stream_key in self.subscribed_streams:
+                    self.subscribed_streams.remove(stream_key)
+                    await self.channel_layer.group_discard(f"stream_{stream_key}", self.channel_name)
             elif message_type == 'request_analysis':
                 # Trigger analysis if needed
                 pass
-                
         except json.JSONDecodeError:
             logger.error("Invalid JSON received")
     
@@ -60,21 +58,20 @@ class StreamAnalysisConsumer(AsyncWebsocketConsumer):
         }))
     
     @database_sync_to_async
-    def get_recent_analysis(self):
-        """Get recent analysis results for stream"""
+    def get_recent_analysis(self, stream_key):
+        """Get recent analysis results for a given stream"""
         try:
             analyses = VideoAnalysis.objects.filter(
-                stream_id=self.stream_id
+                stream_key=stream_key
             ).order_by('-timestamp')[:5]
-            
             return [analysis.to_dict() for analysis in analyses]
         except Exception as e:
-            logger.error(f"Error getting recent analysis: {e}")
+            logger.error(f"Error getting recent analysis for {stream_key}: {e}")
             return []
     
-    async def send_recent_analysis(self):
-        """Send recent analysis results to client"""
-        recent_analyses = await self.get_recent_analysis()
+    async def send_recent_analysis(self, stream_key):
+        """Send recent analysis results to client for the given stream"""
+        recent_analyses = await self.get_recent_analysis(stream_key)
         if recent_analyses:
             await self.send(text_data=json.dumps({
                 'type': 'recent_analysis',
