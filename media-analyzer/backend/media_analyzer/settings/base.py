@@ -250,6 +250,11 @@ LOGO_DETECTION_CONFIG = {
     'use_cloud_vision': USE_CLOUD_VISION,
 }
 
+# Event Source Configuration
+SEGMENT_EVENT_SOURCE = os.getenv('SEGMENT_EVENT_SOURCE', 'filewatcher').lower()
+FILE_WATCHER_POLL_INTERVAL = float(os.getenv('FILE_WATCHER_POLL_INTERVAL', '1.0'))
+WEBHOOK_PORT = int(os.getenv('WEBHOOK_PORT', '8001'))
+
 # =============================================================================
 # Kubernetes and Container Configuration
 # =============================================================================
@@ -299,6 +304,16 @@ LOGGING = {
         'streaming.file_watcher': {
             'handlers': ['console'],
             'level': 'DEBUG',
+            'propagate': True,
+        },
+        'streaming.event_sources': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'streaming.event_source_manager': {
+            'handlers': ['console'],
+            'level': 'INFO',
             'propagate': True,
         },
         'ai_processing': {

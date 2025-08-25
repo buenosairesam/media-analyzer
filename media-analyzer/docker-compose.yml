@@ -112,8 +112,8 @@ services:
         condition: service_started
     command: ./entrypoint-celery.sh --queues=default,config_management --hostname=default-worker@%h
 
-  # File Watcher - Monitor HLS segments (publishes events to Redis)
-  file-watcher:
+  # Event Source - Pluggable segment monitoring (file watcher, cloud events, etc)
+  event-source:
     build:
       context: ./backend
       target: development
@@ -129,12 +129,20 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - MEDIA_ROOT=/app/media
+      # Event source configuration
+      - SEGMENT_EVENT_SOURCE=filewatcher  # Options: filewatcher, cloud, webhook
+      - FILE_WATCHER_POLL_INTERVAL=1.0
+      - WEBHOOK_PORT=8001
+      # Cloud configuration (for future use)
+      - GCS_BUCKET_NAME=media-analyzer-segments
+      - USE_CLOUD_STORAGE=false
+      - USE_CLOUD_VISION=false
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
-    command: python manage.py watch_hls_files --poll-interval=2
+    command: python manage.py start_event_source
   
   # Event Processor - Consumes segment events from Redis  
   event-processor:
