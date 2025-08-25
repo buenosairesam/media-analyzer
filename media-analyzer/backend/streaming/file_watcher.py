@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+import shutil
 from pathlib import Path
 from django.conf import settings
 from ai_processing.processors.video_analyzer import VideoAnalyzer
@@ -16,6 +17,10 @@ class HLSFileWatcher:
         self.poll_interval = poll_interval
         self.processed_files = set()
         self.analyzer = VideoAnalyzer()
+        
+        # Create a persistent directory for analysis segments
+        self.analysis_dir = self.media_dir / 'analysis_segments'
+        self.analysis_dir.mkdir(exist_ok=True)
         
     def get_stream_key_from_filename(self, filename):
         """Extract stream_key from filename: 'stream_key-segment_number.ts' -> 'stream_key'"""
@@ -36,9 +41,15 @@ class HLSFileWatcher:
                 return
             stream_key = active_stream.stream_key
             logger.info(f"File watcher: Processing new segment {file_path.name} (stream: {stream_key})")
-            # Queue for analysis
-            self.analyzer.queue_segment_analysis(stream_key, str(file_path))
-            logger.info(f"File watcher: Queued segment for analysis: {file_path.name}")
+            
+            # Copy the segment to analysis directory to prevent deletion by nginx
+            analysis_file_path = self.analysis_dir / file_path.name
+            shutil.copy2(file_path, analysis_file_path)
+            logger.debug(f"File watcher: Copied segment to {analysis_file_path}")
+            
+            # Queue the copied file for analysis
+            self.analyzer.queue_segment_analysis(stream_key, str(analysis_file_path))
+            logger.info(f"File watcher: Queued segment for analysis: {analysis_file_path.name}")
         except Exception as e:
             logger.error(f"File watcher: Error processing {file_path}: {e}")
             import traceback
