@@ -1,3 +1,21 @@
+**If you cloned this repository before August 25, 2025:**
+
+The commit history has been cleaned up for better readability. If you have a local clone:
+
+```bash
+# Fetch latest changes
+git fetch --all --prune
+
+# Switch to the new main branch
+git switch main || git checkout -b main origin/main
+git reset --hard origin/main
+
+# Optional: Clean up old tracking branches
+git branch -d webcam  # if you have it locally
+```
+Original commit history: Check the webcam branch to see the original development history up to commit e790025.
+
+
 # Real-Time Video AI Analysis Platform
 
 ![Control Panel Overview](def/panel_capture.png)
