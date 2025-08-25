@@ -1,0 +1,177 @@
+digraph MediaAnalyzer {
+    // Graph settings
+    rankdir=TB;
+    bgcolor="white";
+    fontname="Arial";
+    fontsize=12;
+    ratio=fill;
+    size="12,16!";
+    
+    // Node defaults
+    node [fontname="Arial", fontsize=10, shape=box, style=filled];
+    edge [fontname="Arial", fontsize=8];
+    
+    // Color scheme
+    subgraph cluster_legend {
+        label="Legend";
+        style=filled;
+        color=lightgray;
+        node [shape=plaintext, style=filled];
+        
+        implemented [label="✓ Implemented", fillcolor="#d4edda", color="#155724"];
+        planned [label="○ Planned", fillcolor="#fff3cd", color="#856404"];
+        
+        implemented -> planned [style=invis];
+    }
+    
+    // Input Sources
+    subgraph cluster_sources {
+        label="Video Sources";
+        style=filled;
+        color="#e3f2fd";
+        
+        webcam [label="Webcam", fillcolor="#d4edda"];
+        rtmp [label="RTMP/OBS", fillcolor="#d4edda"];
+        files [label="File Upload", fillcolor="#fff3cd"];
+    }
+    
+    // Source Adapters (Design Pattern)
+    subgraph cluster_adapters {
+        label="Source Adapters Pattern";
+        style=filled;
+        color="#f3e5f5";
+        
+        base_adapter [label="BaseSourceAdapter\n(Abstract)", fillcolor="#e1bee7"];
+        webcam_adapter [label="WebcamAdapter", fillcolor="#d4edda"];
+        rtmp_adapter [label="RtmpAdapter", fillcolor="#d4edda"];
+        file_adapter [label="FileAdapter", fillcolor="#fff3cd"];
+    }
+    
+    // Core Services
+    subgraph cluster_core {
+        label="Core Platform";
+        style=filled;
+        color="#fff3e0";
+        
+        django [label="Django API\n+ Channels\n:8000", fillcolor="#d4edda"];
+        postgres [label="PostgreSQL\nDatabase", fillcolor="#d4edda"];
+        redis [label="Redis\nCache & Broker", fillcolor="#d4edda"];
+        nginx [label="NGINX\nReverse Proxy\n:80", fillcolor="#d4edda"];
+    }
+    
+    // Execution Strategies (Design Pattern)
+    subgraph cluster_execution {
+        label="Execution Strategies Pattern";
+        style=filled;
+        color="#e8f5e8";
+        
+        base_strategy [label="BaseExecutionStrategy\n(Abstract)", fillcolor="#c8e6c9"];
+        local_strategy [label="LocalStrategy", fillcolor="#d4edda"];
+        lan_strategy [label="LANStrategy", fillcolor="#fff3cd"];
+        cloud_strategy [label="CloudStrategy", fillcolor="#fff3cd"];
+    }
+    
+    // Analysis Workers (Queue Segregation)
+    subgraph cluster_workers {
+        label="Celery Workers (Queue Segregation)";
+        style=filled;
+        color="#e3f2fd";
+        
+        logo_worker [label="Logo Detection\nWorker\n(logo_queue)", fillcolor="#d4edda"];
+        visual_worker [label="Visual Properties\nWorker\n(visual_queue)", fillcolor="#fff3cd"];
+        audio_worker [label="Audio Transcript\nWorker\n(audio_queue)", fillcolor="#fff3cd"];
+        text_worker [label="Text Recognition\nWorker\n(text_queue)", fillcolor="#fff3cd"];
+    }
+    
+    // AI Adapters (Design Pattern)
+    subgraph cluster_ai_adapters {
+        label="Analysis Adapters Pattern";
+        style=filled;
+        color="#fce4ec";
+        
+        base_ai [label="DetectionAdapter\n(Abstract)", fillcolor="#f8bbd9"];
+        clip_adapter [label="CLIPAdapter\n(Local)", fillcolor="#d4edda"];
+        gcp_vision [label="GCPVisionAdapter\n(Cloud)", fillcolor="#d4edda"];
+        yolo_adapter [label="YOLOAdapter\n(Planned)", fillcolor="#fff3cd"];
+    }
+    
+    // Storage Options
+    subgraph cluster_storage {
+        label="Media Storage";
+        style=filled;
+        color="#f1f8e9";
+        
+        local_storage [label="Local Files\n(nginx-served)", fillcolor="#d4edda"];
+        gcs_storage [label="Google Cloud\nStorage", fillcolor="#d4edda"];
+    }
+    
+    // Frontend
+    subgraph cluster_frontend {
+        label="Frontend";
+        style=filled;
+        color="#e8eaf6";
+        
+        angular [label="Angular 17 SPA\n+ WebSocket\n:4200", fillcolor="#d4edda"];
+        hls_player [label="HLS.js Player\n+ Canvas Overlays", fillcolor="#d4edda"];
+    }
+    
+    // Cloud Services
+    subgraph cluster_cloud {
+        label="GCP Services";
+        style=filled;
+        color="#e0f2f1";
+        
+        vision_api [label="Cloud Vision API\n(Logo Detection)", fillcolor="#d4edda"];
+        speech_api [label="Speech-to-Text API\n(Audio Transcript)", fillcolor="#fff3cd"];
+    }
+    
+    // Connections - Current Implementation (solid)
+    webcam -> webcam_adapter [color="#2e7d32"];
+    rtmp -> rtmp_adapter [color="#2e7d32"];
+    
+    webcam_adapter -> django [color="#2e7d32"];
+    rtmp_adapter -> django [color="#2e7d32"];
+    
+    django -> postgres [color="#2e7d32"];
+    django -> redis [color="#2e7d32"];
+    django -> local_storage [color="#2e7d32"];
+    django -> gcs_storage [color="#2e7d32"];
+    
+    redis -> logo_worker [color="#2e7d32"];
+    logo_worker -> local_strategy [color="#2e7d32"];
+    local_strategy -> clip_adapter [color="#2e7d32"];
+    local_strategy -> gcp_vision [color="#2e7d32"];
+    gcp_vision -> vision_api [color="#2e7d32"];
+    
+    django -> angular [label="WebSocket\nAPI", color="#2e7d32"];
+    angular -> hls_player [color="#2e7d32"];
+    nginx -> angular [color="#2e7d32"];
+    
+    // Planned Connections (dashed)
+    files -> file_adapter [color="#f57f17", style=dashed];
+    file_adapter -> django [color="#f57f17", style=dashed];
+    
+    redis -> visual_worker [color="#f57f17", style=dashed];
+    redis -> audio_worker [color="#f57f17", style=dashed];
+    redis -> text_worker [color="#f57f17", style=dashed];
+    
+    visual_worker -> lan_strategy [color="#f57f17", style=dashed];
+    audio_worker -> cloud_strategy [color="#f57f17", style=dashed];
+    text_worker -> cloud_strategy [color="#f57f17", style=dashed];
+    
+    cloud_strategy -> speech_api [color="#f57f17", style=dashed];
+    lan_strategy -> yolo_adapter [color="#f57f17", style=dashed];
+    
+    // Inheritance relationships (dotted)
+    base_adapter -> webcam_adapter [style=dotted, color=gray];
+    base_adapter -> rtmp_adapter [style=dotted, color=gray];
+    base_adapter -> file_adapter [style=dotted, color=gray];
+    
+    base_strategy -> local_strategy [style=dotted, color=gray];
+    base_strategy -> lan_strategy [style=dotted, color=gray];
+    base_strategy -> cloud_strategy [style=dotted, color=gray];
+    
+    base_ai -> clip_adapter [style=dotted, color=gray];
+    base_ai -> gcp_vision [style=dotted, color=gray];
+    base_ai -> yolo_adapter [style=dotted, color=gray];
+}
