@@ -22,6 +22,9 @@ class HLSFileWatcher:
         self.analysis_dir = self.media_dir / 'analysis_segments'
         self.analysis_dir.mkdir(exist_ok=True)
         
+        # Track copied files for cleanup
+        self.copied_files = set()
+        
     def get_stream_key_from_filename(self, filename):
         """Extract stream_key from filename: 'stream_key-segment_number.ts' -> 'stream_key'"""
         if not filename.endswith('.ts'):
@@ -47,6 +50,10 @@ class HLSFileWatcher:
             shutil.copy2(file_path, analysis_file_path)
             logger.debug(f"File watcher: Copied segment to {analysis_file_path}")
             
+            # Track copied file and cleanup old ones
+            self.copied_files.add(analysis_file_path)
+            self.cleanup_old_analysis_files()
+            
             # Queue the copied file for analysis
             self.analyzer.queue_segment_analysis(stream_key, str(analysis_file_path))
             logger.info(f"File watcher: Queued segment for analysis: {analysis_file_path.name}")
@@ -54,6 +61,28 @@ class HLSFileWatcher:
             logger.error(f"File watcher: Error processing {file_path}: {e}")
             import traceback
             logger.error(f"File watcher: Traceback: {traceback.format_exc()}")
+    
+    def cleanup_old_analysis_files(self, max_files=20):
+        """Keep only the most recent analysis files to prevent disk space leak"""
+        if len(self.copied_files) <= max_files:
+            return
+            
+        try:
+            # Sort by creation time and remove oldest files
+            files_by_time = sorted(self.copied_files, key=lambda f: f.stat().st_ctime if f.exists() else 0)
+            files_to_remove = files_by_time[:-max_files]  # Keep only last max_files
+            
+            for old_file in files_to_remove:
+                if old_file.exists():
+                    old_file.unlink()
+                    logger.debug(f"File watcher: Cleaned up old analysis file: {old_file.name}")
+                self.copied_files.discard(old_file)
+                
+            if files_to_remove:
+                logger.info(f"File watcher: Cleaned up {len(files_to_remove)} old analysis files")
+                
+        except Exception as e:
+            logger.error(f"File watcher: Error during cleanup: {e}")
     
     def scan_for_new_files(self):
         """Scan for new .ts files in the media directory"""
