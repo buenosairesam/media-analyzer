@@ -1,21 +1,3 @@
-**If you cloned this repository before August 25, 2025:**
-
-The commit history has been cleaned up for better readability. If you have a local clone:
-
-```bash
-# Fetch latest changes
-git fetch --all --prune
-
-# Switch to the new main branch
-git switch main || git checkout -b main origin/main
-git reset --hard origin/main
-
-# Optional: Clean up old tracking branches
-git branch -d webcam  # if you have it locally
-```
-Original commit history: Check the webcam branch to see the original development history up to commit e790025.
-
-
 # Real-Time Video AI Analysis Platform
 
 ![Control Panel Overview](def/panel_capture.png)
@@ -38,45 +20,13 @@ docker compose up
 
 ![System Architecture](def/architecture/architecture_diagram.svg)
 
-**Key Design Patterns:**
-
-- **Source Adapters** (`streaming/source_adapters.py`) - Abstract webcam vs RTMP input
-- **Execution Strategies** (`ai_processing/execution_strategies/`) - Local vs distributed processing  
-- **Analysis Adapters** (`ai_processing/adapters/`) - Pluggable AI models (CLIP, GCP Vision)
-- **Queue Segregation** - Separate Celery workers for different analysis types
-
-## Code Organization
-
-```
-├── backend/
-│   ├── streaming/           # Video ingestion (RTMP/Webcam)
-│   ├── ai_processing/       # AI analysis pipeline
-│   │   ├── adapters/        # Pluggable AI models
-│   │   ├── execution_strategies/  # Local/cloud/distributed
-│   │   └── tasks.py         # Celery workers
-│   └── effects/             # Real-time video effects (future)
-├── frontend/                # Angular 17+ SPA
-├── k8s/                     # Kubernetes manifests
-└── logos/                   # Test images (Apple, Nike, etc.)
-```
-
 ## Tech Stack
 
 - **Backend**: Django + Channels, Celery, PostgreSQL, Redis
-- **AI/ML**: PyTorch + CLIP, OpenCV, GCP Vision API
+- **AI/ML**: PyTorch + CLIP, OpenCV
 - **Frontend**: Angular 17, WebSockets, HLS.js
 - **Infrastructure**: Docker, Kubernetes, NGINX
 
-## Features Implemented
-
-✅ **Real-time logo detection** (CLIP + GCP Vision)  
-✅ **Live video streaming** (webcam/RTMP → HLS)  
-✅ **WebSocket overlays** (detection boxes, confidence scores)  
-✅ **Kubernetes deployment** (auto-scaling, health checks)  
-✅ **Modular architecture** (adapters, strategies, queues)  
-
-🔄 **In progress**: Visual properties, audio transcription, distributed processing
-
 ---
 
-*This project demonstrates full-stack capabilities: AI/ML integration, real-time systems, cloud-native architecture, and modern web development.*
+*This project aims to demonstrate full-stack capabilities: AI/ML integration, real-time systems, cloud-native architecture, and modern web development.*

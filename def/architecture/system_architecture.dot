@@ -5,7 +5,7 @@ digraph MediaAnalyzer {
     fontname="Arial";
     fontsize=12;
     ratio=fill;
-    size="9,10!";
+    size="27.5,30!";
     ranksep=0.3;
     nodesep=0.3;
     
