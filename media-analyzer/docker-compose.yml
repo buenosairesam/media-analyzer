@@ -112,8 +112,40 @@ services:
         condition: service_started
     command: ./entrypoint-celery.sh --queues=default,config_management --hostname=default-worker@%h
 
-  # File Watcher - Monitor HLS segments
-  file-watcher:
+  # Event Source - Pluggable segment monitoring (file watcher, cloud events, etc)
+  event-source:
+    build:
+      context: ./backend
+      target: development
+    volumes:
+      - ./backend:/app
+      - ./media:/app/media
+    environment:
+      - DEBUG=1
+      - DB_HOST=postgres
+      - DB_NAME=media_analyzer
+      - DB_USER=media_user
+      - DB_PASSWORD=media_pass
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MEDIA_ROOT=/app/media
+      # Event source configuration
+      - SEGMENT_EVENT_SOURCE=filewatcher  # Options: filewatcher, cloud, webhook
+      - FILE_WATCHER_POLL_INTERVAL=1.0
+      - WEBHOOK_PORT=8001
+      # Cloud configuration (for future use)
+      - GCS_BUCKET_NAME=media-analyzer-segments
+      - USE_CLOUD_STORAGE=false
+      - USE_CLOUD_VISION=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: python manage.py start_event_source
+  
+  # Event Processor - Consumes segment events from Redis  
+  event-processor:
     build:
       context: ./backend
       target: development
@@ -134,7 +166,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    command: python manage.py watch_hls_files --poll-interval=2
+    command: celery -A media_analyzer worker -l info -Q default -c 2 --hostname=event-processor@%h
 
   # Angular Frontend with NGINX (unified approach)
   frontend:
@@ -177,8 +209,8 @@ services:
       - "0.0.0.0:1935:1935"  # RTMP port - bind to all interfaces
       - "0.0.0.0:8081:80"    # HTTP port for HLS - bind to all interfaces
     volumes:
-      # Persist HLS segments and playlists to host media directory
-      - ./media:/var/www/media
+      # Persist HLS segments and playlists to host media directory - FIXED: same path as event-source
+      - ./media:/app/media
       # Custom nginx.conf for RTMP/HLS configuration
       - ./docker/nginx.conf:/etc/nginx/nginx.conf
     depends_on:

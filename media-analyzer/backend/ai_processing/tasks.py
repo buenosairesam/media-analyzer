@@ -6,114 +6,12 @@ from .analysis_engine import AnalysisEngine
 from .models import VideoAnalysis, DetectionResult, VisualAnalysis, ProcessingQueue, AnalysisProvider
 from .config_manager import config_manager
 
+# Import event_tasks to ensure Celery autodiscovery finds them
+from . import event_tasks
+
 logger = logging.getLogger(__name__)
 channel_layer = get_channel_layer()
 
-
-@shared_task(bind=True, queue='logo_detection')
-def analyze_logo_detection(self, stream_key, segment_path, session_id=None):
-    """Dedicated task for logo detection analysis"""
-    queue_item = None
-    try:
-        # Update queue status
-        queue_item = ProcessingQueue.objects.filter(
-            stream_key=stream_key, 
-            segment_path=segment_path,
-            status='pending'
-        ).first()
-        
-        if queue_item:
-            queue_item.status = 'processing'
-            queue_item.save()
-
-        # Check if logo detection is configured
-        if not config_manager.has_capability('logo_detection'):
-            logger.error("No logo detection provider configured")
-            if queue_item:
-                queue_item.status = 'failed'
-                queue_item.error_message = 'No logo detection provider configured'
-                queue_item.save()
-            return {"error": "No logo detection provider configured"}
-        
-        # Initialize analysis engine with cached config
-        engine = AnalysisEngine()
-        logo_config = config_manager.get_provider_config('logo_detection')
-        engine.configure_providers({'logo_detection': logo_config})
-        
-        # Extract and analyze frame
-        frame = engine.extract_frame_from_segment(segment_path)
-        if not frame:
-            logger.error(f"Failed to extract frame from {segment_path}")
-            if queue_item:
-                queue_item.status = 'failed'
-                queue_item.error_message = 'Failed to extract frame from segment'
-                queue_item.save()
-            return {"error": "Failed to extract frame"}
-        
-        # Analyze for logos only - use configured threshold
-        from django.conf import settings
-        confidence = settings.LOGO_DETECTION_CONFIG['confidence_threshold']
-        analysis_results = engine.analyze_frame(frame, ['logo_detection'], confidence_threshold=confidence)
-        
-        # Store results
-        provider_info = config_manager.get_provider_by_type(logo_config['provider_type'])
-        provider = AnalysisProvider.objects.get(id=provider_info['id'])
-        
-        analysis = VideoAnalysis.objects.create(
-            stream_key=stream_key,
-            session_id=session_id,
-            segment_path=segment_path,
-            provider=provider,
-            analysis_type='logo_detection',
-            frame_timestamp=0.0,
-            confidence_threshold=confidence
-        )
-        
-        detections = []
-        if 'logos' in analysis_results:
-            for logo in analysis_results['logos']:
-                detection = DetectionResult.objects.create(
-                    analysis=analysis,
-                    label=logo['label'],
-                    confidence=logo['confidence'],
-                    bbox_x=logo['bbox']['x'],
-                    bbox_y=logo['bbox']['y'],
-                    bbox_width=logo['bbox']['width'],
-                    bbox_height=logo['bbox']['height'],
-                    detection_type='logo'
-                )
-                detections.append(detection.to_dict())
-        
-        # Send results via WebSocket (always send, even with 0 detections)
-        websocket_group = f"stream_{stream_key}"
-        logger.info(f"Sending websocket update to group: {websocket_group} - detections: {len(detections)}")
-        async_to_sync(channel_layer.group_send)(
-            websocket_group,
-            {
-                "type": "analysis_update",  
-                "analysis": analysis.to_dict()
-            }
-        )
-        
-        # Update queue status
-        if queue_item:
-            queue_item.status = 'completed'
-            queue_item.save()
-        
-        result = {
-            "detections": len(detections), 
-            "analysis_id": str(analysis.id),
-            "brands": [d['label'] for d in detections] if detections else []
-        }
-        return result
-        
-    except Exception as e:
-        logger.error(f"Logo detection failed for {segment_path}: {e}")
-        if queue_item:
-            queue_item.status = 'failed'
-            queue_item.error_message = str(e)
-            queue_item.save()
-        raise self.retry(countdown=60, max_retries=3)
 
 
 @shared_task(bind=True, queue='visual_analysis') 
@@ -202,8 +100,8 @@ def process_video_segment(self, stream_key, segment_path, session_id=None):
         # Dispatch to specialized queues based on available capabilities
         active_capabilities = config_manager.get_active_capabilities()
         
-        if 'logo_detection' in active_capabilities:
-            analyze_logo_detection.delay(stream_key, segment_path, session_id)
+        # Logo detection now handled by event-driven system in event_tasks.py
+        # Events are published by file-watcher and consumed by process_segment_from_event
         
         # Visual analysis disabled for performance - only logo detection
         # analyze_visual_properties.delay(stream_key, segment_path)

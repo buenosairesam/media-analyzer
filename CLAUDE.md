@@ -836,3 +836,4 @@ If you tell me your stack (language/framework + how you install deps), I’ll ta
 
 
 it's docker compose not docker-compose
+- use debug logs not prints

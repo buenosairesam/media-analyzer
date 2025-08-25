@@ -5,7 +5,9 @@ digraph MediaAnalyzer {
     fontname="Arial";
     fontsize=12;
     ratio=fill;
-    size="12,16!";
+    size="9,10!";
+    ranksep=0.3;
+    nodesep=0.3;
     
     // Node defaults
     node [fontname="Arial", fontsize=10, shape=box, style=filled];
@@ -18,111 +20,137 @@ digraph MediaAnalyzer {
         color=lightgray;
         node [shape=plaintext, style=filled];
         
-        implemented [label="✓ Implemented", fillcolor="#d4edda", color="#155724"];
-        planned [label="○ Planned", fillcolor="#fff3cd", color="#856404"];
+        implemented [label="✅ Implemented", fillcolor="#28a745", color="#ffffff", fontcolor="#ffffff"];
+        planned [label="⏳ Planned", fillcolor="#ffc107", color="#212529", fontcolor="#212529"];
+        code_pattern [label="📐 Code Pattern", fillcolor="#8e24aa", color="#ffffff", fontcolor="#ffffff"];
+        service_arch [label="⚡ Service/Architecture", fillcolor="#1976d2", color="#ffffff", fontcolor="#ffffff"];
         
         implemented -> planned [style=invis];
+        code_pattern -> service_arch [style=invis];
     }
     
     // Input Sources
     subgraph cluster_sources {
         label="Video Sources";
         style=filled;
-        color="#e3f2fd";
+        color="#1976d2";
         
-        webcam [label="Webcam", fillcolor="#d4edda"];
-        rtmp [label="RTMP/OBS", fillcolor="#d4edda"];
-        files [label="File Upload", fillcolor="#fff3cd"];
+        webcam [label="Webcam", fillcolor="#28a745", fontcolor="#ffffff"];
+        rtmp [label="RTMP/OBS", fillcolor="#28a745", fontcolor="#ffffff"];
+        files [label="File Upload", fillcolor="#ffc107", fontcolor="#212529"];
     }
     
     // Source Adapters (Design Pattern)
     subgraph cluster_adapters {
         label="Source Adapters Pattern";
         style=filled;
-        color="#f3e5f5";
+        color="#8e24aa";
         
-        base_adapter [label="BaseSourceAdapter\n(Abstract)", fillcolor="#e1bee7"];
-        webcam_adapter [label="WebcamAdapter", fillcolor="#d4edda"];
-        rtmp_adapter [label="RtmpAdapter", fillcolor="#d4edda"];
-        file_adapter [label="FileAdapter", fillcolor="#fff3cd"];
+        base_adapter [label="BaseSourceAdapter\n(Abstract)", fillcolor="#ce93d8"];
+        webcam_adapter [label="WebcamAdapter", fillcolor="#28a745", fontcolor="#ffffff"];
+        rtmp_adapter [label="RtmpAdapter", fillcolor="#28a745", fontcolor="#ffffff"];
+        file_adapter [label="FileAdapter", fillcolor="#ffc107", fontcolor="#212529"];
     }
     
     // Core Services
     subgraph cluster_core {
         label="Core Platform";
         style=filled;
-        color="#fff3e0";
+        color="#1976d2";
         
-        django [label="Django API\n+ Channels\n:8000", fillcolor="#d4edda"];
-        postgres [label="PostgreSQL\nDatabase", fillcolor="#d4edda"];
-        redis [label="Redis\nCache & Broker", fillcolor="#d4edda"];
-        nginx [label="NGINX\nReverse Proxy\n:80", fillcolor="#d4edda"];
+        django [label="Django API\n+ Channels\n:8000", fillcolor="#28a745", fontcolor="#ffffff"];
+        postgres [label="PostgreSQL\nDatabase", fillcolor="#28a745", fontcolor="#ffffff"];
+        redis [label="Redis\nCache & Broker", fillcolor="#28a745", fontcolor="#ffffff"];
+        nginx [label="NGINX\nReverse Proxy\n:80", fillcolor="#28a745", fontcolor="#ffffff"];
     }
     
     // Execution Strategies (Design Pattern)
     subgraph cluster_execution {
         label="Execution Strategies Pattern";
         style=filled;
-        color="#e8f5e8";
+        color="#8e24aa";
         
-        base_strategy [label="BaseExecutionStrategy\n(Abstract)", fillcolor="#c8e6c9"];
-        local_strategy [label="LocalStrategy", fillcolor="#d4edda"];
-        lan_strategy [label="LANStrategy", fillcolor="#fff3cd"];
-        cloud_strategy [label="CloudStrategy", fillcolor="#fff3cd"];
+        base_strategy [label="BaseExecutionStrategy\n(Abstract)", fillcolor="#ce93d8"];
+        local_strategy [label="LocalStrategy", fillcolor="#28a745", fontcolor="#ffffff"];
+        lan_strategy [label="LANStrategy", fillcolor="#ffc107", fontcolor="#212529"];
+        cloud_strategy [label="CloudStrategy", fillcolor="#ffc107", fontcolor="#212529"];
     }
     
-    // Analysis Workers (Queue Segregation)
-    subgraph cluster_workers {
-        label="Celery Workers (Queue Segregation)";
+    // Event Source Pattern (NEW)
+    subgraph cluster_event_sources {
+        label="Event Source Pattern";
         style=filled;
-        color="#e3f2fd";
+        color="#8e24aa";
         
-        logo_worker [label="Logo Detection\nWorker\n(logo_queue)", fillcolor="#d4edda"];
-        visual_worker [label="Visual Properties\nWorker\n(visual_queue)", fillcolor="#fff3cd"];
-        audio_worker [label="Audio Transcript\nWorker\n(audio_queue)", fillcolor="#fff3cd"];
-        text_worker [label="Text Recognition\nWorker\n(text_queue)", fillcolor="#fff3cd"];
+        base_event_source [label="SegmentEventSource\n(Abstract)", fillcolor="#ce93d8"];
+        file_watcher_source [label="FileWatcherEventSource\n(Local/LAN)", fillcolor="#28a745", fontcolor="#ffffff"];
+        cloud_storage_source [label="CloudStorageEventSource\n(GCS Pub/Sub)", fillcolor="#ffc107", fontcolor="#212529"];
+        webhook_source [label="WebhookEventSource\n(External)", fillcolor="#ffc107", fontcolor="#212529"];
+    }
+    
+    // Event-Driven Processing Pipeline
+    subgraph cluster_events {
+        label="Event-Driven Processing";
+        style=filled;
+        color="#1976d2";
+        
+        event_source_manager [label="EventSourceManager\n(Environment-based)", fillcolor="#28a745", fontcolor="#ffffff"];
+        redis_events [label="Redis Event Queue\n(segment_events)", fillcolor="#28a745", fontcolor="#ffffff"];
+        event_processor [label="Event Processor\n(triggers analysis)", fillcolor="#28a745", fontcolor="#ffffff"];
+    }
+    
+    // Analysis Workers
+    subgraph cluster_workers {
+        label="Celery Workers";
+        style=filled;
+        color="#1976d2";
+        
+        logo_worker [label="Logo Detection\nWorker\n(logo_queue)", fillcolor="#28a745", fontcolor="#ffffff"];
+        visual_worker [label="Visual Properties\nWorker\n(visual_queue)", fillcolor="#ffc107", fontcolor="#212529"];
+        audio_worker [label="Audio Transcript\nWorker\n(audio_queue)", fillcolor="#ffc107", fontcolor="#212529"];
+        text_worker [label="Text Recognition\nWorker\n(text_queue)", fillcolor="#ffc107", fontcolor="#212529"];
     }
     
     // AI Adapters (Design Pattern)
     subgraph cluster_ai_adapters {
         label="Analysis Adapters Pattern";
         style=filled;
-        color="#fce4ec";
+        color="#8e24aa";
         
-        base_ai [label="DetectionAdapter\n(Abstract)", fillcolor="#f8bbd9"];
-        clip_adapter [label="CLIPAdapter\n(Local)", fillcolor="#d4edda"];
-        gcp_vision [label="GCPVisionAdapter\n(Cloud)", fillcolor="#d4edda"];
-        yolo_adapter [label="YOLOAdapter\n(Planned)", fillcolor="#fff3cd"];
+        base_ai [label="DetectionAdapter\n(Abstract)", fillcolor="#ce93d8"];
+        clip_adapter [label="CLIPAdapter\n(Local)", fillcolor="#28a745", fontcolor="#ffffff"];
+        gcp_vision [label="GCPVisionAdapter\n(Cloud)", fillcolor="#ffc107", fontcolor="#212529"];
+        yolo_adapter [label="YOLOAdapter\n(Planned)", fillcolor="#ffc107", fontcolor="#212529"];
     }
     
     // Storage Options
     subgraph cluster_storage {
         label="Media Storage";
         style=filled;
-        color="#f1f8e9";
+        color="#1976d2";
         
-        local_storage [label="Local Files\n(nginx-served)", fillcolor="#d4edda"];
-        gcs_storage [label="Google Cloud\nStorage", fillcolor="#d4edda"];
+        local_storage [label="Local Files\n(nginx-served)", fillcolor="#28a745", fontcolor="#ffffff"];
+        gcs_storage [label="Google Cloud\nStorage", fillcolor="#ffc107", fontcolor="#212529"];
     }
     
     // Frontend
     subgraph cluster_frontend {
         label="Frontend";
         style=filled;
-        color="#e8eaf6";
+        color="#1976d2";
         
-        angular [label="Angular 17 SPA\n+ WebSocket\n:4200", fillcolor="#d4edda"];
-        hls_player [label="HLS.js Player\n+ Canvas Overlays", fillcolor="#d4edda"];
+        angular [label="Angular 17 SPA\n+ WebSocket\n:4200", fillcolor="#28a745", fontcolor="#ffffff"];
+        hls_player [label="HLS.js Player\n+ Canvas Overlays", fillcolor="#28a745", fontcolor="#ffffff"];
     }
     
     // Cloud Services
     subgraph cluster_cloud {
         label="GCP Services";
         style=filled;
-        color="#e0f2f1";
+        color="#1976d2";
         
-        vision_api [label="Cloud Vision API\n(Logo Detection)", fillcolor="#d4edda"];
-        speech_api [label="Speech-to-Text API\n(Audio Transcript)", fillcolor="#fff3cd"];
+        vision_api [label="Cloud Vision API\n(Logo Detection)", fillcolor="#ffc107", fontcolor="#212529"];
+        speech_api [label="Speech-to-Text API\n(Audio Transcript)", fillcolor="#ffc107", fontcolor="#212529"];
     }
     
     // Connections - Current Implementation (solid)
@@ -137,12 +165,26 @@ digraph MediaAnalyzer {
     django -> local_storage [color="#2e7d32"];
     django -> gcs_storage [color="#2e7d32"];
     
+    // Event source pattern connections
+    local_storage -> file_watcher_source [label="monitors\nHLS segments", color="#2e7d32"];
+    gcs_storage -> cloud_storage_source [label="storage\nevents", color="#2e7d32"];
+    file_watcher_source -> event_source_manager [color="#2e7d32"];
+    cloud_storage_source -> event_source_manager [color="#2e7d32"];
+    webhook_source -> event_source_manager [color="#2e7d32"];
+    
+    // Event-driven processing flow
+    event_source_manager -> redis_events [label="publishes\nevents", color="#2e7d32"];
+    redis_events -> event_processor [label="consumes\nevents", color="#2e7d32"];
+    event_processor -> logo_worker [label="triggers\nanalysis", color="#2e7d32"];
+    
     redis -> logo_worker [color="#2e7d32"];
     logo_worker -> local_strategy [color="#2e7d32"];
     local_strategy -> clip_adapter [color="#2e7d32"];
     local_strategy -> gcp_vision [color="#2e7d32"];
     gcp_vision -> vision_api [color="#2e7d32"];
     
+    // WebSocket real-time updates
+    logo_worker -> django [label="analysis\nresults", color="#2e7d32"];
     django -> angular [label="WebSocket\nAPI", color="#2e7d32"];
     angular -> hls_player [color="#2e7d32"];
     nginx -> angular [color="#2e7d32"];
@@ -174,4 +216,9 @@ digraph MediaAnalyzer {
     base_ai -> clip_adapter [style=dotted, color=gray];
     base_ai -> gcp_vision [style=dotted, color=gray];
     base_ai -> yolo_adapter [style=dotted, color=gray];
+    
+    // Event source inheritance (NEW)
+    base_event_source -> file_watcher_source [style=dotted, color=gray];
+    base_event_source -> cloud_storage_source [style=dotted, color=gray];
+    base_event_source -> webhook_source [style=dotted, color=gray];
 }

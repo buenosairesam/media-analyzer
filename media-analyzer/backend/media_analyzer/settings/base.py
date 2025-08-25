@@ -101,9 +101,10 @@ CELERY_TIMEZONE = 'UTC'
 
 # Celery queue routing
 CELERY_TASK_ROUTES = {
-    'ai_processing.tasks.analyze_logo_detection': {'queue': 'logo_detection'},
     'ai_processing.tasks.analyze_visual_properties': {'queue': 'visual_analysis'},
     'ai_processing.tasks.reload_analysis_config': {'queue': 'config_management'},
+    'ai_processing.event_tasks.process_segment_from_event': {'queue': 'logo_detection'},
+    'ai_processing.event_tasks.start_event_processor': {'queue': 'default'},
 }
 
 # Define queues with different priorities
@@ -249,6 +250,11 @@ LOGO_DETECTION_CONFIG = {
     'use_cloud_vision': USE_CLOUD_VISION,
 }
 
+# Event Source Configuration
+SEGMENT_EVENT_SOURCE = os.getenv('SEGMENT_EVENT_SOURCE', 'filewatcher').lower()
+FILE_WATCHER_POLL_INTERVAL = float(os.getenv('FILE_WATCHER_POLL_INTERVAL', '1.0'))
+WEBHOOK_PORT = int(os.getenv('WEBHOOK_PORT', '8001'))
+
 # =============================================================================
 # Kubernetes and Container Configuration
 # =============================================================================
@@ -274,6 +280,53 @@ if os.getenv('KUBERNETES_SERVICE_HOST'):
         f"http://{os.getenv('INGRESS_HOST', 'localhost')}",
         f"https://{os.getenv('INGRESS_HOST', 'localhost')}",
     ])
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'streaming.file_watcher': {
+            'handlers': ['console'],
+            'level': 'INFO',  # Changed from DEBUG
+            'propagate': True,
+        },
+        'streaming.event_sources': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'streaming.event_source_manager': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'ai_processing': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
 
 # =============================================================================
 # Production Security Settings
