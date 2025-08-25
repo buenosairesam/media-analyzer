@@ -1,10 +1,14 @@
 <div class="stream-viewer">
-  <video #video controls muted class="video-player">
-    Your browser does not support video playback.
-  </video>
+  <div class="video-container">
+    <video #video controls muted class="video-player">
+      Your browser does not support video playback.
+    </video>
+    <canvas #overlay class="detection-overlay"></canvas>
+  </div>
   
   <div class="controls">
     <button (click)="play()" class="btn">Play</button>
     <button (click)="pause()" class="btn">Pause</button>
+    <button (click)="toggleOverlay()" class="btn">{{showOverlay ? 'Hide' : 'Show'}} Detections</button>
   </div>
 </div>

@@ -1,0 +1,104 @@
+.analysis-panel {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  min-width: 300px;
+  
+  h3 {
+    margin: 0 0 1rem 0;
+    color: #333;
+  }
+  
+  h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: #555;
+  }
+}
+
+.visual-analysis {
+  margin-bottom: 1.5rem;
+  
+  .property {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    
+    span {
+      min-width: 80px;
+      font-size: 0.9rem;
+    }
+  }
+  
+  .brightness-bar {
+    flex: 1;
+    height: 20px;
+    background: #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+    
+    .brightness-fill {
+      height: 100%;
+      background: linear-gradient(to right, #000, #fff);
+      transition: width 0.3s ease;
+    }
+  }
+  
+  .color-palette {
+    display: flex;
+    gap: 4px;
+    
+    .color-swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid #ccc;
+    }
+  }
+}
+
+.detection-section {
+  margin-bottom: 1rem;
+  
+  .detection-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    margin-bottom: 0.25rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    
+    &.logo {
+      background: #ffe6e6;
+      border-left: 4px solid #ff0000;
+    }
+    
+    &.object {
+      background: #e6ffe6;
+      border-left: 4px solid #00ff00;
+    }
+    
+    &.text {
+      background: #e6e6ff;
+      border-left: 4px solid #0000ff;
+    }
+    
+    .label {
+      font-weight: 500;
+    }
+    
+    .confidence {
+      font-size: 0.8rem;
+      color: #666;
+    }
+  }
+}
+
+.no-detections {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  margin: 2rem 0;
+}

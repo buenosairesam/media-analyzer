@@ -36,3 +36,60 @@ nginx
 
 	  But for development, having CORS in both services is correct because they serve different content types to the browser.
 
+
+on AI feature decide a model design, that Im not sure what actually matters
+
+> can you explain why this model design?
+
+● Looking at this model design, here's the reasoning:
+
+  VideoAnalysis - Central hub that tracks each analysis run with metadata like processing time, confidence thresholds, and frame timestamps. This allows performance monitoring and
+  result correlation.
+
+  ObjectDetection - YOLO results with bounding boxes. Multiple detections can belong to one analysis (one frame can have many objects).
+
+  SceneAnalysis - CLIP results for scene understanding, text detection, and embeddings. One-to-one with VideoAnalysis since CLIP analyzes the whole frame context.
+
+  ProcessingQueue - Decouples video processing from real-time streaming. Allows configurable analysis types per segment (you might want only YOLO for some streams, CLIP+YOLO for
+  others).
+
+  Key design decisions:
+  - Separation of concerns: YOLO (objects) vs CLIP (scenes/text) have different data structures
+  - Flexible processing: Queue supports different AI model combinations per segment
+  - Performance tracking: Processing times and confidence thresholds for optimization
+  - Scalability: UUIDs and proper indexing for distributed processing
+  - Real-time ready: Frame timestamps enable overlay synchronization
+
+  The analysis_types JSON field in ProcessingQueue is particularly important - it lets you configure which AI models to run per stream (e.g., ['yolo', 'clip_scene'] for object detection
+   + scene analysis).
+
+
+
+still hardcoding stuff???
+
+class TextDetectionAdapterFactory(AdapterFactory):                                                                                                                                     │ │
+    """Factory for text detection adapters"""                                                                                                                                          │ │
+    @staticmethod                                                                                                                                                                      │ │
+    def create(provider_config):                                                                                                                                                       │ │
+      provider_type = provider_config.get('provider_type')                                                                                                                           │ │
+                                                                                                                                                                                     │ │
+      if provider_type == 'gcp_vision':                                                                                                                                              │ │
+          return GCPTextDetectionAdapter()                                                                                                                                           │ │
+      elif provider_type == 'local_tesseract':                                                                                                                                       │ │
+          return TesseractTextDetectionAdapter()                                                                                                                                     │ │
+      else:                                                                                                                                                                          │ │
+          raise ValueError(f"Unknown text detection provider: {provider_type}")             
+
+
+add aliases to avoid relative imports
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ ../frontend/src/app/components/stream-viewer/stream-viewer.component.ts                                                                                                                │ │
+│ │                                                                                                                                                                                        │ │
+│ │   1    import { Component, ElementRef, Input, ViewChild, AfterViewInit, OnDestroy, OnChanges } from '@angular/core';                                                                   │ │
+│ │   2    import Hls from 'hls.js';                                                                                                                                                       │ │
+│ │   3 +  import { Analysis, DetectionResult } from '../../models/analysis';                                                                                                              │ │
+│ │   4                                                                                                                                                                                    │ │
+│ │   5    @Component({                                                                                                                                                                    │ │
+│ │   6      selector: 'app-stream-viewer',                                                                                                                                                │ │
+│ ╰───────────────────────────────────────────────────────────
+

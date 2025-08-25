@@ -12,8 +12,17 @@
     
     <div class="viewer-section">
       <app-stream-viewer 
-        [streamUrl]="selectedStreamUrl">
+        [streamUrl]="selectedStreamUrl"
+        [detections]="currentDetections">
       </app-stream-viewer>
+    </div>
+    
+    <div class="analysis-section">
+      <app-analysis-panel
+        [analyses]="recentAnalyses"
+        [currentDetections]="currentDetections"
+        [currentVisual]="currentVisual">
+      </app-analysis-panel>
     </div>
   </main>
 </div>
