@@ -209,8 +209,8 @@ services:
       - "0.0.0.0:1935:1935"  # RTMP port - bind to all interfaces
       - "0.0.0.0:8081:80"    # HTTP port for HLS - bind to all interfaces
     volumes:
-      # Persist HLS segments and playlists to host media directory
-      - ./media:/var/www/media
+      # Persist HLS segments and playlists to host media directory - FIXED: same path as event-source
+      - ./media:/app/media
       # Custom nginx.conf for RTMP/HLS configuration
       - ./docker/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
