@@ -71,13 +71,25 @@ digraph MediaAnalyzer {
         cloud_strategy [label="CloudStrategy", fillcolor="#fff3cd"];
     }
     
+    // Event Source Pattern (NEW)
+    subgraph cluster_event_sources {
+        label="Event Source Pattern (Pluggable)";
+        style=filled;
+        color="#e8f5e8";
+        
+        base_event_source [label="SegmentEventSource\n(Abstract)", fillcolor="#c8e6c9"];
+        file_watcher_source [label="FileWatcherEventSource\n(Local/LAN)", fillcolor="#d4edda"];
+        cloud_storage_source [label="CloudStorageEventSource\n(GCS Pub/Sub)", fillcolor="#d4edda"];
+        webhook_source [label="WebhookEventSource\n(External)", fillcolor="#d4edda"];
+    }
+    
     // Event-Driven Processing Pipeline
     subgraph cluster_events {
         label="Event-Driven Processing";
         style=filled;
         color="#fff3e0";
         
-        file_watcher [label="HLS File Watcher\n(segment detection)", fillcolor="#d4edda"];
+        event_source_manager [label="EventSourceManager\n(Environment-based)", fillcolor="#d4edda"];
         redis_events [label="Redis Event Queue\n(segment_events)", fillcolor="#d4edda"];
         event_processor [label="Event Processor\n(triggers analysis)", fillcolor="#d4edda"];
     }
@@ -148,9 +160,15 @@ digraph MediaAnalyzer {
     django -> local_storage [color="#2e7d32"];
     django -> gcs_storage [color="#2e7d32"];
     
+    // Event source pattern connections
+    local_storage -> file_watcher_source [label="monitors\nHLS segments", color="#2e7d32"];
+    gcs_storage -> cloud_storage_source [label="storage\nevents", color="#2e7d32"];
+    file_watcher_source -> event_source_manager [color="#2e7d32"];
+    cloud_storage_source -> event_source_manager [color="#2e7d32"];
+    webhook_source -> event_source_manager [color="#2e7d32"];
+    
     // Event-driven processing flow
-    local_storage -> file_watcher [label="monitors\nHLS segments", color="#2e7d32"];
-    file_watcher -> redis_events [label="publishes\nevents", color="#2e7d32"];
+    event_source_manager -> redis_events [label="publishes\nevents", color="#2e7d32"];
     redis_events -> event_processor [label="consumes\nevents", color="#2e7d32"];
     event_processor -> logo_worker [label="triggers\nanalysis", color="#2e7d32"];
     
@@ -193,4 +211,9 @@ digraph MediaAnalyzer {
     base_ai -> clip_adapter [style=dotted, color=gray];
     base_ai -> gcp_vision [style=dotted, color=gray];
     base_ai -> yolo_adapter [style=dotted, color=gray];
+    
+    // Event source inheritance (NEW)
+    base_event_source -> file_watcher_source [style=dotted, color=gray];
+    base_event_source -> cloud_storage_source [style=dotted, color=gray];
+    base_event_source -> webhook_source [style=dotted, color=gray];
 }

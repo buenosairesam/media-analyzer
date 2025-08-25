@@ -303,7 +303,7 @@ LOGGING = {
     'loggers': {
         'streaming.file_watcher': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',  # Changed from DEBUG
             'propagate': True,
         },
         'streaming.event_sources': {

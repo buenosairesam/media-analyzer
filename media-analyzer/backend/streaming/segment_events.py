@@ -31,7 +31,7 @@ class SegmentEventPublisher:
             
             # Push event to Redis list (FIFO queue)
             result = self.redis_client.lpush(self.event_key, json.dumps(event))
-            logger.info(f"Published segment event: {segment_path} (queue length: {result})")
+            logger.debug(f"Published segment event: {segment_path} (queue length: {result})")
             
             # Trigger event processing task
             try:

@@ -115,7 +115,7 @@ class FileWatcherEventSource(SegmentEventSource):
                 logger.warning(f"FileWatcher: No active stream found, skipping {file_path.name}")
                 return
                 
-            logger.info(f"FileWatcher: Processing new segment {file_path.name} (stream: {stream_key})")
+            logger.debug(f"FileWatcher: Processing new segment {file_path.name} (stream: {stream_key})")
             
             success = self.emit_segment_event(
                 segment_path=str(file_path),
@@ -124,7 +124,7 @@ class FileWatcherEventSource(SegmentEventSource):
             )
             
             if success:
-                logger.info(f"FileWatcher: Emitted event for {file_path.name}")
+                logger.debug(f"FileWatcher: Emitted event for {file_path.name}")
             else:
                 logger.error(f"FileWatcher: Failed to emit event for {file_path.name}")
                 
@@ -147,7 +147,7 @@ class FileWatcherEventSource(SegmentEventSource):
             new_files = current_files - self.processed_files
             
             if new_files:
-                logger.info(f"FileWatcher: Found {len(new_files)} new files to process")
+                logger.debug(f"FileWatcher: Found {len(new_files)} new files to process")
                 
             for new_file in new_files:
                 self.process_new_segment(new_file)
