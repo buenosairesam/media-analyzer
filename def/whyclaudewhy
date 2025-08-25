@@ -93,3 +93,89 @@ add aliases to avoid relative imports
 │ │   6      selector: 'app-stream-viewer',                                                                                                                                                │ │
 │ ╰───────────────────────────────────────────────────────────
 
+
+
+
+I need more details on why celery for the AI processing task, I reckon that some queue is needed for compute and/or IO heavy interactions like AI processing which not just passing through what comes from the stream but yeah, need some depth
+
+
+Your system should now show live logo detection when you hold up branded items! 🏷️
+
+> cool, just a question dont do anything but I need more details on why celery for the AI processing task, I reckon that some queue is needed for compute and/or IO heavy interactions 
+  like AI processing which not just passing through what comes from the stream but yeah, need some depth
+
+● You're absolutely right to question this! Let me explain the specific reasons for Celery in AI video processing:
+
+  Why Celery for AI Processing?
+
+  1. Processing Time Reality
+
+  - CLIP model inference: 200-500ms per frame on CPU, 50-100ms on GPU
+  - Frame extraction: 50-200ms per video segment
+  - Total per segment: 250-700ms minimum
+  - Problem: Django request-response cycle would timeout, blocking the web server
+
+  2. HLS Streaming Constraints
+
+  - HLS segments: Created every 2-6 seconds by FFmpeg
+  - Analysis lag: If processing takes 500ms, you're always behind
+  - User experience: Video player can't wait for AI analysis to complete
+  - Solution: Async processing lets video serve immediately, AI catches up
+
+  3. Resource Management
+
+  - Memory intensive: Each CLIP model uses 400MB-1GB RAM
+  - CPU bound: AI inference blocks the entire process
+  - Multiple streams: 5 concurrent streams = 5x resource usage
+  - Queue benefits: Limit concurrent AI tasks, prevent memory exhaustion
+
+  4. Scaling Considerations
+
+  - Single server: Process 2-3 streams simultaneously
+  - Multiple workers: Celery scales across machines/GPUs
+  - Priority queues: Real-time streams get priority over batch analysis
+  - Failure handling: Retry failed analyses, dead letter queues
+
+  Alternative Approaches
+
+  Without Celery (synchronous):
+  # This blocks the Django thread for 500ms+
+  def serve_hls_file(request, filename):
+      # ... serve file ...
+      analysis = analyze_frame_now(segment)  # BLOCKS HERE
+      return response  # Takes 500ms+ total
+
+  With threading (risky):
+  # Memory leaks, no queue management, hard to monitor
+  import threading
+  threading.Thread(target=analyze_frame, args=(segment,)).start()
+
+  With asyncio (complex):
+  # Requires entire Django app to be async, complex error handling
+  async def analyze_frame_async():
+      # Works but harder to manage resources
+
+  Your Architecture Benefits
+
+  Current flow:
+  1. HLS segment created → Served immediately (fast)
+  2. Analysis queued → Celery worker picks it up
+  3. Results ready → WebSocket pushes to frontend
+  4. User sees: Video plays smoothly + analysis appears seconds later
+
+  Without queue:
+  1. HLS segment created → Wait for AI analysis (slow)
+  2. User experience: Choppy video, timeouts
+  3. Server: One slow AI task blocks everything
+
+  Business Value
+
+  - Real-time streaming: Video never stutters
+  - Scalable: Add more Celery workers as needed
+  - Reliable: Failed analyses retry automatically
+  - Monitorable: Queue depth shows system load
+
+  For media monitoring at scale (like Seenka's use case), you need this separation because analyzing "millones de emisiones" means handling thousands of concurrent streams - impossible
+  without proper async processing.
+
+  The queue is essential for production-grade video AI systems!

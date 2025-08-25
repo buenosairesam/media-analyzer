@@ -1,0 +1,54 @@
+> acuraccy and timing suffered a bit, but I think is better to have it closer to
+   what be in production. still is very slow, what can be done to improve that. 
+  dont change anything. I think this is meant more for batch processing not 
+  realtime
+
+● You're absolutely right! This architecture is indeed more suited for batch processing than real-time. The timing issues you're seeing are fundamental to the current
+  design:
+
+  Current Bottlenecks
+
+  1. HLS Inherent Latency
+  - 6-10 second segments + buffering
+  - Browser video player lag
+  - Not designed for real-time interaction
+
+  2. Processing Pipeline Overhead
+  - File I/O for each segment
+  - CLIP model inference (CPU-heavy)
+  - Database writes + WebSocket sends
+  - Container networking delays
+
+  3. Queue Architecture
+  - Redis message passing
+  - Task serialization/deserialization
+  - Worker startup overhead per task
+
+  Real-Time Alternatives (for reference)
+
+  WebRTC + Frame Streaming
+  - Direct browser camera → WebSocket frames
+  - Skip file storage entirely
+  - Sub-second latency possible
+
+  Edge Processing
+  - Lighter models (MobileNet vs CLIP)
+  - Frame sampling (every 5th frame)
+  - Client-side pre-processing
+
+  Streaming Analytics
+  - Apache Kafka + stream processing
+  - Continuous analysis pipeline
+  - Built for real-time data flows
+
+  Current System's Sweet Spot
+
+  Your architecture excels at:
+  - Content moderation (analyze uploaded videos)
+  - Media library analysis (batch process existing content)
+  - Compliance monitoring (post-process broadcasts)
+  - Marketing analytics (analyze ad placements over time)
+
+  The real-time demo works well enough to show the technology, but you're right that production would likely be batch-oriented for accuracy and reliability.
+
+  For K8s, this actually showcases better - batch workloads with auto-scaling based on queue depth is a perfect Kubernetes use case! 🎯

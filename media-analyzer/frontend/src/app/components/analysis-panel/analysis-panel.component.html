@@ -1,29 +1,31 @@
 <div class="analysis-panel">
   <h3>Live Analysis Results</h3>
   
-  @if (currentVisual) {
-    <div class="visual-analysis">
-      <h4>Visual Properties</h4>
-      <div class="property">
-        <span>Brightness:</span>
-        <div class="brightness-bar">
-          <div class="brightness-fill" [style.width.%]="currentVisual.brightness_level * 100"></div>
-        </div>
-        <span>{{(currentVisual.brightness_level * 100) | number:'1.0-0'}}%</span>
+  <div class="visual-analysis" [class.disabled]="!currentVisual">
+    <h4>Visual Properties <span class="status">({{ currentVisual ? 'Active' : 'Disabled' }})</span></h4>
+    <div class="property">
+      <span>Brightness:</span>
+      <div class="brightness-bar">
+        <div class="brightness-fill" [style.width.%]="currentVisual ? (currentVisual.brightness_level * 100) : 0"></div>
       </div>
-      
-      @if (currentVisual.dominant_colors && currentVisual.dominant_colors.length > 0) {
-        <div class="property">
-          <span>Colors:</span>
-          <div class="color-palette">
-            @for (color of currentVisual.dominant_colors; track $index) {
-              <div class="color-swatch" [style.background]="getColorStyle([color])"></div>
-            }
-          </div>
-        </div>
-      }
+      <span>{{ currentVisual ? ((currentVisual.brightness_level * 100) | number:'1.0-0') : '--' }}%</span>
     </div>
-  }
+    
+    <div class="property">
+      <span>Colors:</span>
+      <div class="color-palette">
+        @if (currentVisual && currentVisual.dominant_colors && currentVisual.dominant_colors.length > 0) {
+          @for (color of currentVisual.dominant_colors; track $index) {
+            <div class="color-swatch" [style.background]="getColorStyle([color])"></div>
+          }
+        } @else {
+          <div class="color-swatch disabled"></div>
+          <div class="color-swatch disabled"></div>
+          <div class="color-swatch disabled"></div>
+        }
+      </div>
+    </div>
+  </div>
   
   @if (getDetectionsByType('logo').length > 0) {
     <div class="detection-section">

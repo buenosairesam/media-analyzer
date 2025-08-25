@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Django Backend
+  # Django Backend with ASGI (WebSocket support)
   backend:
     build: ./backend
     ports:
@@ -18,7 +18,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: python manage.py runserver 0.0.0.0:8000
+      redis:
+        condition: service_started
+    command: uvicorn media_analyzer.asgi:application --host 0.0.0.0 --port 8000 --reload
 
   # Django Migrations (run manually)
   migrate:
@@ -36,6 +38,63 @@ services:
         condition: service_healthy
     command: python manage.py migrate
     profiles: ["tools"]  # Only runs when explicitly called
+
+  # Celery Worker - Logo Detection Queue
+  celery-logo:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+      - ./media:/app/media
+    environment:
+      - DEBUG=1
+      - DB_HOST=postgres
+      - DB_NAME=media_analyzer
+      - DB_USER=media_user
+      - DB_PASSWORD=media_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A media_analyzer worker --loglevel=info --queues=logo_detection --hostname=logo-worker@%h
+
+  # Celery Worker - Visual Analysis Queue  
+  celery-visual:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+      - ./media:/app/media
+    environment:
+      - DEBUG=1
+      - DB_HOST=postgres
+      - DB_NAME=media_analyzer
+      - DB_USER=media_user
+      - DB_PASSWORD=media_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A media_analyzer worker --loglevel=info --queues=visual_analysis --hostname=visual-worker@%h
+
+  # Celery Worker - Default Queue
+  celery-default:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+      - ./media:/app/media
+    environment:
+      - DEBUG=1
+      - DB_HOST=postgres
+      - DB_NAME=media_analyzer
+      - DB_USER=media_user
+      - DB_PASSWORD=media_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: celery -A media_analyzer worker --loglevel=info --queues=default,config_management --hostname=default-worker@%h
 
   # # Angular Frontend  
   # frontend:

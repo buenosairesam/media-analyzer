@@ -19,6 +19,37 @@
 .visual-analysis {
   margin-bottom: 1.5rem;
   
+  &.disabled {
+    opacity: 0.5;
+    
+    h4 {
+      color: #999;
+      
+      .status {
+        font-size: 0.8rem;
+        font-weight: normal;
+        color: #666;
+      }
+    }
+    
+    .property span {
+      color: #999;
+    }
+    
+    .brightness-bar {
+      background: #f0f0f0;
+      
+      .brightness-fill {
+        background: #e0e0e0;
+      }
+    }
+    
+    .color-swatch.disabled {
+      background: #f0f0f0 !important;
+      border-color: #ddd;
+    }
+  }
+  
   .property {
     display: flex;
     align-items: center;

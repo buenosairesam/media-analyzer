@@ -1,0 +1,23 @@
+> there is some delay on the image shown and the detection, like when I put the logo in from of the camera the detection shows before the image. dont correct that now 
+  but for to know
+
+● Good observation! That's a classic real-time streaming issue where the analysis pipeline is running ahead of the video display pipeline.
+
+  What's happening:
+  - Analysis pipeline: Celery processes video segments immediately when they're created
+  - Display pipeline: HLS player has buffering/latency for smooth playback
+  - Result: AI detections appear before the video shows that frame
+
+  Common causes:
+  - HLS inherent latency (2-6 seconds typical)
+  - Browser video buffering
+  - Network buffering in HLS.js
+
+  Potential solutions (for later):
+  - Sync detections with video timestamp
+  - Delay analysis results to match video latency
+  - Use lower-latency streaming (WebRTC instead of HLS)
+  - Add timestamp correlation between segments and detections
+
+  For now, at least we know the AI pipeline is working fast! The detection accuracy and real-time processing are the main goals achieved. The timing sync is a polish
+  issue we can address later. 📡⏰

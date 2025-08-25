@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, ViewChild, AfterViewInit, OnDestroy, OnChanges } from '@angular/core';
+import { Component, ElementRef, Input, ViewChild, AfterViewInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import Hls from 'hls.js';
 import { Analysis, DetectionResult } from '../../models/analysis';
 
@@ -26,13 +26,14 @@ export class StreamViewerComponent implements AfterViewInit, OnDestroy, OnChange
     }
   }
   
-  ngOnChanges() {
-    if (this.streamUrl && this.videoElement) {
+  ngOnChanges(changes: SimpleChanges) {
+    // Only reload stream if the streamUrl actually changed
+    if (changes['streamUrl'] && this.streamUrl && this.videoElement) {
       this.loadStream(this.streamUrl);
     }
     
     // Redraw detections when they change
-    if (this.ctx) {
+    if (changes['detections'] && this.ctx) {
       this.drawDetections();
     }
   }

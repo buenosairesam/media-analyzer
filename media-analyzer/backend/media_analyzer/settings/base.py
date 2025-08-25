@@ -95,6 +95,30 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
+# Celery queue routing
+CELERY_TASK_ROUTES = {
+    'ai_processing.tasks.analyze_logo_detection': {'queue': 'logo_detection'},
+    'ai_processing.tasks.analyze_visual_properties': {'queue': 'visual_analysis'},
+    'ai_processing.tasks.reload_analysis_config': {'queue': 'config_management'},
+}
+
+# Define queues with different priorities
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_QUEUES = {
+    'default': {
+        'routing_key': 'default',
+    },
+    'logo_detection': {
+        'routing_key': 'logo_detection',
+    },
+    'visual_analysis': {
+        'routing_key': 'visual_analysis',
+    },
+    'config_management': {
+        'routing_key': 'config_management',
+    },
+}
+
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
