@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-n=jmw6r)102f0mytr7m1q5qwk^v$fd8gyokqpglsd&rl$d(^0="
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -37,8 +38,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",  # For CORS
     "channels",  # For WebSocket
-    "rest_framework",  # For API
     "streaming",
     "ai_processing",
     "effects",
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # Add this first
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -78,10 +80,16 @@ WSGI_APPLICATION = "media_analyzer.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import os
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "media_analyzer"),
+        "USER": os.getenv("DB_USER", "media_user"), 
+        "PASSWORD": os.getenv("DB_PASSWORD", "media_pass"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
@@ -121,6 +129,25 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Streaming settings
+RTMP_PORT = int(os.getenv('RTMP_PORT', 1935))
+HLS_BASE_URL = os.getenv('HLS_BASE_URL', 'http://localhost:8000')
+HLS_ENDPOINT_PATH = os.getenv('HLS_ENDPOINT_PATH', '/streaming/hls/')  # For Django dev mode
+# When using GCS, this would be: 'https://storage.googleapis.com/bucket-name/'
+
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4200",  # Angular dev server
+    "http://127.0.0.1:4200",
+]
+
+# For development - allow all origins (comment out for production)
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

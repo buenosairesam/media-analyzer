@@ -1,0 +1,46 @@
+You're absolutely right! In Kubernetes, environment variables are handled at the deployment level through ConfigMaps and Secrets, not
+  individual service .env files.
+
+  Kubernetes approach:
+  # k8s/configmap.yaml
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: media-analyzer-config
+  data:
+    DB_HOST: "postgres-service"
+    HLS_BASE_URL: "http://nginx-hls-service"
+
+  # k8s/deployment.yaml
+  env:
+  - name: DB_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: media-analyzer-config
+        key: DB_HOST
+
+  Better structure:
+  - Development: Single .env for docker-compose
+  - Production: K8s ConfigMaps/Secrets per environment
+  - No service-specific .env files
+
+  Recommended approach:
+
+● Write(.env.development)
+  ⎿  Wrote 8 lines to .env.development                     
+     # Development environment variables for docker-compose
+     DB_HOST=postgres
+     DB_NAME=media_analyzer
+     DB_USER=media_user
+     DB_PASSWORD=media_pass
+     RTMP_PORT=1935
+     HLS_BASE_URL=http://localhost:8081
+     DEBUG=1
+
+● Then K8s handles it via:
+  - k8s/base/configmap.yaml - Non-secret config
+  - k8s/base/secret.yaml - Passwords, keys
+  - k8s/overlays/staging/ - Staging overrides
+  - k8s/overlays/production/ - Production overrides
+
+  This way each deployment environment controls its own config, not the services themselves.

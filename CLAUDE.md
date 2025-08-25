@@ -1,6 +1,12 @@
 Real-Time Video Analysis Platform
+
 Project Overview
-A scalable real-time video streaming and AI analysis platform that demonstrates modern cloud-native architecture and machine learning integration. The system ingests RTMP video streams (from sources like OBS), processes them with computer vision AI models, and provides live analysis results through a responsive web dashboard.
+A scalable real-time video streaming and AI analysis platform 
+that demonstrates modern cloud-native architecture and machine learning integration. 
+The system ingests RTMP video streams (from sources like OBS), 
+processes them with computer vision AI models, 
+and provides live analysis results through a responsive web dashboard.
+
 Core Functionality
 
 Video Ingestion: Accept RTMP streams and convert to HLS for web playback
@@ -325,3 +331,79 @@ Slice 4: GCP Integration
 Cloud Storage for segments
 GKE deployment
 Monitoring integration
+
+
+
+
+considerations for deployment / testing
+
+does this planning take into consideration running it on a local kubernetes cluster? I use kind and tilt for running tough a prefer not to depend on it for developing just test the orchestration?
+
+The current planning assumes traditional development (Django dev server + Angular dev server) with K8s only for testing orchestration. This is actually perfect for your workflow! Let me clarify the development vs testing approach:
+
+## **Development Mode (Local Servers)**
+```bash
+# Backend development
+cd backend
+python manage.py runserver 8000
+
+# Frontend development  
+cd frontend
+ng serve --port 4200
+
+# Supporting services (via Docker Compose)
+docker-compose up redis postgres
+```
+
+**Benefits:**
+- Hot reload for both Django and Angular
+- Easy debugging with IDE integration
+- Fast iteration cycles
+- No K8s complexity during development
+
+## **Testing Mode (KIND + K8s)**
+```bash
+# Build and deploy to KIND cluster
+kind create cluster --name media-analyzer
+kubectl apply -k k8s/overlays/development
+```
+
+**For orchestration testing only:**
+- Container builds and registry
+- Service discovery and networking
+- Volume mounts and persistence
+- Resource limits and scaling
+- Inter-service communication
+
+## **Suggested Development Workflow**## **Key Points for Your Workflow:**
+
+### **Development (95% of time):**
+- **No K8s dependency** - just Docker Compose for supporting services
+- **Fast hot reload** - Django and Angular dev servers
+- **Easy debugging** - direct access to logs and debugger
+- **Simple database migrations** and model changes
+
+### **K8s Testing (when needed):**
+- **Container builds** work correctly
+- **Service networking** functions properly  
+- **Volume mounts** for media files
+- **Resource limits** don't break anything
+- **Horizontal scaling** works as expected
+
+### **Perfect for KIND:**
+- KIND cluster only created when testing orchestration
+- No overhead during daily development
+- Easy to tear down and recreate
+- Matches production K8s behavior
+
+### **Tilt Usage (Optional):**
+- **If you use Tilt**: Only for K8s testing, not development
+- **If you skip Tilt**: Use the simple `kubectl` commands for testing
+
+This approach gives you:
+- **Fast development** without K8s complexity
+- **Realistic testing** of the actual deployment
+- **No vendor lock-in** to Tilt (though it's great if you want it)
+- **Easy CI/CD** since K8s manifests are tested locally
+
+The planning already supports this perfectly - you develop fast locally and test orchestration when needed!

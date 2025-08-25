@@ -1,3 +1,7 @@
 venv
 node_modules
 __pycache__
+*.sublime-*
+def/ignore
+postgres_data
+media
